@@ -19,6 +19,8 @@ in Debian and the web (SystemD, TLS1.2+, etc.).  Most of the stuff under
 `embedded/` is related to firmware updates or to controller diagnostics, and
 won't work now that Debian Squeeze is long, long obsolete.
 
+I've added [a few notes about this project on my blog][4].
+
 # Copying
 
 &copy; 2011-2021 Mike Bourgeous, licensed under [GNU Affero GPLv3][1].
@@ -88,3 +90,4 @@ meta/cross_build.sh
 [1]: https://www.gnu.org/licenses/agpl-3.0.html
 [2]: https://github.com/nitrogenlogic/nlutils
 [3]: https://github.com/nitrogenlogic/knd
+[4]: https://blog.mikebourgeous.com/2021/03/09/opening-knc/
