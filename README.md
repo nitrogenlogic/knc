@@ -3,7 +3,8 @@
 The Kinematic Network Controller from Nitrogen Logic's [Depth Camera
 Controller][0].  KNC provides a browser-based user interface for defining zones,
 connecting to Hue lights, setting up presence-based triggers on lights, and
-configuring the controller.  KNC also provides xAP protocol compatibility for
+configuring the controller.  In other words, KNC provides the UI frontend for
+the [KND][3] backend.  KNC also provides xAP protocol compatibility for
 integration with Homeseer and similar DIY automation software.
 
 KNC is written in Ruby with EventMachine.  This makes it faster than e.g.
