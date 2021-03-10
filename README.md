@@ -26,6 +26,9 @@ won't work now that Debian Squeeze is long, long obsolete.
 Some Javascript dependencies under `wwwdata/` will have their own licenses.
 See each file for details.
 
+Use of knc code in new projects is not recommended due in part to its older
+style and obsolete dependencies.
+
 # Running
 
 ## Dependencies
