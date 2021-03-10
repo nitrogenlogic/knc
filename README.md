@@ -34,6 +34,8 @@ You'll want Ruby, plus [nlutils][2], and [knd][3].
 
 ```bash
 rvm install 2.7.2
+echo '2.7.2' > .ruby-version
+echo 'knc' > .ruby-gemset
 rvm use .
 ```
 
