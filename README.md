@@ -23,6 +23,9 @@ won't work now that Debian Squeeze is long, long obsolete.
 
 &copy; 2011-2021 Mike Bourgeous, licensed under [GNU Affero GPLv3][1].
 
+Some Javascript dependencies under `wwwdata/` will have their own licenses.
+See each file for details.
+
 # Running
 
 ## Dependencies
