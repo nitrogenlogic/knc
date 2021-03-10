@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Zones - Nitrogen Logic Depth Camera Controller</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link type="text/css" rel="stylesheet" href="css/main.css">
+		<link type="text/css" rel="stylesheet" href="css/zones.css">
+
+		<!-- jQuery -->
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_api.js"></script>
+		<script type="text/javascript" src="js/knc_common.js"></script>
+		<script type="text/javascript" src="js/knc_zone.js"></script>
+		<script type="text/javascript" src="js/knc_zones.js"></script>
+	</head>
+	<body id="zones_page">
+		<div id="content">
+			<div class="title">Trigger Zones</div>
+			<div id="nav">
+				<div id="hostname">##HOSTNAME##.local</div>
+				<div id="status">
+					<span class="online">Online</span><span class="fps"></span><span class="offline">Offline</span>
+				</div>
+				<div class="subtitle">
+					<a href="/">Home</a> |
+					Zones |
+					<a href="/rules">Rules</a> |
+					<a href="/log">Event Log</a> |
+					<a href="/settings">Settings</a>
+				</div>
+			</div>
+
+			<noscript>JavaScript is required to use the Zones page.</noscript>
+
+			<p>This page allows you to view and adjust detailed zone parameters.</p>
+			<a id="zones_help_toggle" href="javascript:">Show Help</a>
+			<ul id="zones_help" style="display: none">
+				<li><b>occupied</b>: Whether the zone is occupied.  Zone occupation is determined by
+				<b>param</b> and related parameters, with the default being presence detection using zone
+				population.</li>
+				<li><b>bright</b>: The brightness of the RGB image within the zone's pixel boundaries.</li>
+				<li><b>sa</b>: The approximate surface area of the zone's contents, in mm&sup2;.<br><br></li>
+				<li><b>xc</b>: The zone's horizontal center of mass, in millimeters relative to the sensor.</li>
+				<li><b>yc</b>: The zone's vertical center of mass, in millimeters relative to the sensor.</li>
+				<li><b>zc</b>: The zone's perpendicular center of mass, in millimeters away from the sensor.</li>
+
+				<li><b>xmin</b>: The zone's minimum X (horizontal) coordinate,
+				in millimeters relative to the sensor.</li>
+				<li><b>xmax</b>: The zone's maximum X (horizontal) coordinate,
+				in millimeters relative to the sensor.</li>
+				<li><b>ymin</b>: The zone's minimum Y (vertical) coordinate,
+				in millimeters relative to the sensor.</li>
+				<li><b>ymax</b>: The zone's maximum Y (vertical) coordinate,
+				in millimeters relative to the sensor.</li>
+				<li><b>zmin</b>: The zone's minimum Z (depth) coordinate,
+				in millimeters away from the sensor.</li>
+				<li><b>zmax</b>: The zone's maximum Z (depth) coordinate,
+				in millimeters away from the sensor.<br><br></li>
+
+				<li><b>px_xmin</b>: The zone's minimum X coordinate on screen, in pixels.</li>
+				<li><b>px_xmax</b>: The zone's maximum X coordinate on screen, in pixels.</li>
+				<li><b>px_ymin</b>: The zone's minimum Y coordinate on screen, in pixels.</li>
+				<li><b>px_ymax</b>: The zone's maximum Y coordinate on screen, in pixels.</li>
+				<li><b>px_zmin</b>: The zone's minimum Z coordinate on screen, in nonlinear depth units.</li>
+				<li><b>px_zmax</b>: The zone's maximum Z coordinate on screen, in nonlinear depth units.<br><br></li>
+
+				<li><b>pop</b>: Zone population.  The number of sensor pixels with values inside the zone.</li>
+				<li><b>maxpop</b>: Maximum population.  The maximum number of pixels the zone may contain.</li>
+
+				<li><b>negate</b>: Whether the zone's <b>occupied</b> parameter should be inverted.</li>
+				<li><b>param</b>: The parameter that determines whether a zone is <b>occupied</b>.</li>
+				<li><b>on_level</b>: The minimum value of the parameter specified by the zone's <b>param</b>
+				parameter before the zone becomes <b>occupied</b>.</li>
+				<li><b>on_delay</b>: The minimum number of frames <b>param</b>'s value must be above
+				<b>on_level</b> before the zone becomes <b>occupied</b>.</li>
+				<li><b>off_level</b>: The minimum value of the parameter specified by the zone's <b>param</b>
+				parameter before the zone becomes un-<b>occupied</b>.</li>
+				<li><b>off_delay</b>: The minimum number of frames <b>param</b>'s value must be below
+				<b>off_level</b> before the zone becomes un-<b>occupied</b>.</li>
+
+				<!-- TODO: collapsible box for docs -->
+			</ul>
+
+			<table class="knc_table zone_detail">
+				<thead>
+					<tr>
+						<th>Name</th>
+
+						<th>occupied</th>
+						<th>bright</th>
+						<th>sa</th>
+						<th>xc</th>
+						<th>yc</th>
+						<th>zc</th>
+
+						<th>pop</th>
+						<th>maxpop</th>
+					</tr>
+				</thead>
+
+				<tbody id="no_zone_rows">
+					<tr style="display: none"><!-- hack to make next tr not :first-child --></tr>
+					<tr>
+						<td colspan="9">
+							No zones found, or camera offline.
+						</td>
+					</tr>
+				</tbody>
+
+				<tbody id="zone_row_template" data-zone="#ZONENAME#" style="display: none">
+					<tr style="display: none"><!-- hack to make next tr not :first-child --></tr>
+					<tr id="zone_#ZONEID#" class="zone_summary">
+						<th class="name">
+							<div>
+								<div class="row_button row_toggle" tabindex="0">&#9654;</div>
+								<input data-attr="name" readonly id="name_#ZONEID#" type="text" value="Zone Name"></input>
+								<div class="row_button row_delete" tabindex="0">&#x2716;</div>
+							</div>
+						</th>
+						<td data-attr="occupied" data-trueval="&check;" data-falseval="" class="occupied"></td>
+						<td data-attr="bright" class="bright"></td>
+						<td data-attr="sa" class="sa"></td>
+						<td data-attr="xc" class="xc"></td>
+						<td data-attr="yc" class="yc"></td>
+						<td data-attr="zc" class="zc"></td>
+						<td data-attr="pop" class="pop"></td>
+						<td data-attr="maxpop" class="maxpop"></td>
+					</tr>
+					<tr class="zone_extra">
+						<td colspan="9">
+							<div class="zone_extra" style="display: none">
+								<table class="knc_table zone_extra">
+									<tr>
+										<th><label for="xmin_#ZONEID#">xmin</label></th>
+										<td><input data-attr="xmin" type="number" min="-#XMAX#" max="#XMAX#" id="xmin_#ZONEID#"></td>
+
+										<th><label for="xmax_#ZONEID#">xmax</label></th>
+										<td><input data-attr="xmax" type="number" min="-#XMAX#" max="#XMAX#" id="xmax_#ZONEID#"></td>
+
+										<th><label for="px_xmin_#ZONEID#">px_xmin</label></th>
+										<td><input data-attr="px_xmin" type="number" min="0" max="#PX_XMAX#" id="px_xmin_#ZONEID#"></td>
+
+										<th><label for="px_xmax_#ZONEID#">px_xmax</label></th>
+										<td><input data-attr="px_xmax" type="number" min="0" max="#PX_XMAX#" id="px_xmax_#ZONEID#"></td>
+
+										<th><label for="negate_#ZONEID#">negate</label></th>
+										<td><input data-attr="negate" type="checkbox" id="negate_#ZONEID#"></td>
+
+										<td colspan="2" class="param">
+											<select data-attr="param" id="param_#ZONEID#">
+												<option value="pop">Param: Population</option>
+												<option value="bright">Param: Brightness</option>
+												<option value="sa">Param: Surface Area</option>
+												<option value="xc">Param: X Center</option>
+												<option value="yc">Param: Y Center</option>
+												<option value="zc">Param: Z Center</option>
+											</select>
+										</td>
+									</tr>
+									<tr>
+										<th><label for="ymin_#ZONEID#">ymin</label></th>
+										<td><input data-attr="ymin" type="number" min="-#YMAX#" max="#YMAX#" id="ymin_#ZONEID#"></td>
+
+										<th><label for="ymax_#ZONEID#">ymax</label></th>
+										<td><input data-attr="ymax" type="number" min="-#YMAX#" max="#YMAX#" id="ymax_#ZONEID#"></td>
+
+										<th><label for="px_ymin_#ZONEID#">px_ymin</label></th>
+										<td><input data-attr="px_ymin" type="number" min="0" max="#PX_YMAX#" id="px_ymin_#ZONEID#"></td>
+
+										<th><label for="px_ymax_#ZONEID#">px_ymax</label></th>
+										<td><input data-attr="px_ymax" type="number" min="0" max="#PX_YMAX#" id="px_ymax_#ZONEID#"></td>
+
+										<th><label for="on_level_#ZONEID#">on_level</label></th>
+										<td><input data-attr="on_level" type="number" id="on_level_#ZONEID#"></td>
+
+										<th><label for="on_delay_#ZONEID#">on_delay</label></th>
+										<td><input data-attr="on_delay" type="number" min="0" id="on_delay_#ZONEID#"></td>
+									</tr>
+									<tr>
+										<th><label for="zmin_#ZONEID#">zmin</label></th>
+										<td><input data-attr="zmin" type="number" min="0" max="#ZMAX#" id="zmin_#ZONEID#"></td>
+
+										<th><label for="zmax_#ZONEID#">zmax</label></th>
+										<td><input data-attr="zmax" type="number" min="0" max="#ZMAX#" id="zmax_#ZONEID#"></td>
+
+										<th><label for="px_zmin_#ZONEID#">px_zmin</label></th>
+										<td><input data-attr="px_zmin" type="number" min="0" max="#PX_ZMAX#" id="px_zmin_#ZONEID#"></td>
+
+										<th><label for="px_zmax_#ZONEID#">px_zmax</label></th>
+										<td><input data-attr="px_zmax" type="number" min="0" max="#PX_ZMAX#" id="px_zmax_#ZONEID#"></td>
+
+										<th><label for="off_level_#ZONEID#">off_level</label></th>
+										<td><input data-attr="off_level" type="number" id="off_level_#ZONEID#"></td>
+
+										<th><label for="off_delay_#ZONEID#">off_delay</label></th>
+										<td><input data-attr="off_delay" type="number" min="0" id="off_delay_#ZONEID#"></td>
+									</tr>
+								</table>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+				<tbody id="zone_button_row">
+					<tr>
+						<td colspan="9">
+							<button id="add_zone_button">Add a Zone</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+			<div class="footer_links">
+				<a class="uploadzones" href="/zoneupload.html">Upload Zones</a>
+				&nbsp;|
+				<a href="/zones.json?dl=1">Download Zones</a>
+				&nbsp;|
+				<a class="clearzones" href="/clearzones" rel="nofollow">Remove All Zones</a> <em>(Warning: cannot be undone)</em>
+			</div>
+
+			<div class="copyright">&copy;2015 Nitrogen Logic</div>
+		</div>
+	</body>
+</html>

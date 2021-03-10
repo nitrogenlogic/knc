@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<!-- http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/ -->
+<!-- http://learningwebgl.com/blog/?p=1786 -->
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Learning WebGL - RGGB demosaic test</title>
+		<style type="text/css">
+			body {
+				background: #222;
+				background-repeat: no-repeat;
+				color: #ccc;
+				padding: 0;
+				margin: 0;
+				text-align: center;
+			}
+			#glcanvas {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				margin-top: -240px;
+				margin-left: -320px;
+
+				width: 640px;
+				height: 480px;
+				padding: 0;
+
+				border: 0;
+
+				pointer-events: none;
+			}
+		</style>
+		<script type="text/javascript">
+			"use strict";
+
+			function getShader(gl, domId) {
+				var shaderElem = document.getElementById(domId);
+
+				if(!shaderElem) {
+					throw "Shader '" + domId + "' not found in DOM.";
+				}
+
+				var shaderText = "";
+				var currentChild = shaderElem.firstChild;
+				while(currentChild) {
+					if(currentChild.nodeType == currentChild.TEXT_NODE) {
+						shaderText += currentChild.textContent;
+					}
+					currentChild = currentChild.nextSibling;
+				}
+
+				var shaderId;
+				if(shaderElem.type == "x-shader/x-fragment") {
+					console.log("Loading fragment shader from " + domId);
+					shaderId = gl.createShader(gl.FRAGMENT_SHADER);
+				} else if(shaderElem.type == "x-shader/x-vertex") {
+					console.log("Loading vertex shader from " + domId);
+					shaderId = gl.createShader(gl.VERTEX_SHADER);
+				} else {
+					alert("Invalid shader type " + shaderElem.type);
+					return null;
+				}
+
+				gl.shaderSource(shaderId, shaderText);
+				gl.compileShader(shaderId);
+				if(!gl.getShaderParameter(shaderId, gl.COMPILE_STATUS)) {
+					console.error(gl.getShaderInfoLog(shaderId));
+					alert("An error occurred while compiling shader '" + domId + "': " +
+							gl.getShaderInfoLog(shaderId));
+					return null;
+				}
+
+				return shaderId;
+			}
+
+			var shaderProgram;
+			var aVertexPositionAttr;
+			var texCoordAttr;
+			function initShaders() {
+				var vertexShader = getShader(gl, "shader-vs01");
+				var fragmentShader = getShader(gl, "shader-fs01");
+
+				shaderProgram = gl.createProgram();
+				gl.attachShader(shaderProgram, vertexShader);
+				gl.attachShader(shaderProgram, fragmentShader);
+				gl.linkProgram(shaderProgram);
+
+				if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+					alert("Unable to initialize the shader program.");
+				}
+
+				gl.useProgram(shaderProgram);
+
+				texCoordAttr = gl.getAttribLocation(shaderProgram, "aTexCoord");
+				gl.enableVertexAttribArray(texCoordAttr);
+			}
+
+			var tex;
+			var img;
+			var imgName = window.location.search.length > 0 ? window.location.search.substring(1) : "bayer_photo.png";
+			function initTextures() {
+				function updateImage() {
+					img.src = imgName + "?" + new Date();
+				}
+
+				tex = gl.createTexture();
+				img = new Image();
+				img.onload = function() {
+					texLoaded(img, tex);
+					setTimeout(updateImage, 500);
+				}
+				img.onerror = function() {
+					console.error("Error loading image " + img.src + " to demosaic.");
+					setTimeout(updateImage, 2000);
+				}
+				img.src = imgName;
+			}
+
+			function texLoaded(img, tex) {
+				tex.width = img.width;
+				tex.height = img.height;
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, img);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+				gl.bindTexture(gl.TEXTURE_2D, null);
+			}
+
+			var idxBuf;
+			var idxCount;
+			var texCoordBuf;
+			function initBuffers() {
+				// Create/fill element buffer
+				var idx = [0, 1, 2, 0, 2, 3];
+				idxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+				idxCount = idx.length;
+
+				// Assign texture coordinates
+				var texCoords = [
+					0.0, 0.0,
+					1.0, 0.0,
+					1.0, 1.0,
+					0.0, 1.0,
+						];
+				texCoordBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+			}
+
+			function drawScene(fb, tex, texCoordBuf) {
+				gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				var w, h;
+				if(fb) {
+					w = fb.width;
+					h = fb.height;
+					gl.viewport(0, 0, w, h);
+				} else {
+					w = canvas.offsetWidth;
+					h = canvas.offsetHeight;
+					gl.viewport(0, 0, canvas.width, canvas.height);
+				}
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.vertexAttribPointer(texCoordAttr, 2, gl.FLOAT, false, 0, 0);
+
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+
+				gl.uniform1f(gl.getUniformLocation(shaderProgram, "pixSizeX"), 1.0 / tex.width);
+				gl.uniform1f(gl.getUniformLocation(shaderProgram, "pixSizeY"), 1.0 / tex.height);
+				gl.uniform1f(gl.getUniformLocation(shaderProgram, "texWidth"), tex.width);
+				gl.uniform1f(gl.getUniformLocation(shaderProgram, "texHeight"), tex.height);
+
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.drawElements(gl.TRIANGLES, idxCount, gl.UNSIGNED_SHORT, 0);
+			}
+
+			var canvas;
+			var gl;
+			function startGL() {
+				canvas = document.getElementById('glcanvas');
+
+				gl = canvas.getContext('webgl');
+				if(gl == null) {
+					console.log('No webgl context');
+					gl = canvas.getContext('experimental-webgl');
+				} else {
+					console.log('Got webgl context');
+				}
+				if(gl == null) {
+					document.body.innerHTML =
+						'<p class="glerror">It appears your browser does not support WebGL.</p>';
+					return;
+				} else {
+					console.log('Got experimental-webgl context');
+				}
+
+				if(gl.getExtension('OES_texture_float') == null) {
+					alert('OES_texture_float extension is not supported.');
+				}
+
+				initTextures();
+				initShaders();
+				initBuffers();
+
+				gl.clearColor(0.0, 0.0, 0.0, 1.0);
+				gl.clearDepth(1.0);
+				gl.enable(gl.BLEND);
+				gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+				gl.depthFunc(gl.LEQUAL);
+				gl.enable(gl.DEPTH_TEST);
+				gl.depthFunc(gl.LEQUAL);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				var frameFunc;
+				if(window.mozRequestAnimationFrame) {
+					console.log("Using Mozilla requestAnimationFrame for timing.");
+					frameFunc = window.mozRequestAnimationFrame;
+				} else if(window.webkitRequestAnimationFrame) {
+					console.log("Using WebKit requestAnimationFrame for timing.");
+					frameFunc = window.webkitRequestAnimationFrame;
+				} else if(window.msRequestAnimationFrame) {
+					console.log("Using Microsoft requestAnimationFrame for timing.");
+					frameFunc = window.msRequestAnimationFrame;
+				} else if(window.requestAnimationFrame) {
+					console.log("Cool, using standard requestAnimationFrame for timing.");
+					frameFunc = window.requestAnimationFrame;
+				} else {
+					console.log("Using setTimeout for timing.");
+					frameFunc = function(func) {
+						setTimeout(func, 16);
+					}
+				}
+
+				var lastTime = new Date();
+				var frames = 0;
+				var frameCallback = function() {
+					var now = new Date();
+					frames++;
+					if(now.getTime() - lastTime.getTime() > 10000) {
+						var elapsed = now.getTime() - lastTime.getTime();
+						console.log("Frames: " + frames);
+						console.log("Time: " + elapsed);
+						console.log("FPS: " + frames * 1000.0 / elapsed);
+						lastTime = now;
+						frames = 0;
+					}
+					drawScene(null, tex, texCoordBuf);
+					frameFunc(frameCallback);
+				};
+				frameFunc(frameCallback);
+			}
+		</script>
+
+		<script id="shader-vs01" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec2 aTexCoord;
+
+			varying highp vec2 vTexCoord;
+
+			void main(void) {
+				gl_Position = vec4(aTexCoord * 2.0 - 1.0, 1.0, 1.0);
+				vTexCoord = aTexCoord;
+			}
+		</script>
+		<script id="shader-fs01" type="x-shader/x-fragment">
+			precision highp float;
+
+			varying highp vec2 vTexCoord;
+
+			uniform sampler2D uSampler;
+
+			uniform highp float pixSizeX;
+			uniform highp float pixSizeY;
+
+			uniform highp float texWidth;
+			uniform highp float texHeight;
+
+			const highp float cellSize = 2.0;
+
+			vec4 sample(vec2 tc)
+			{
+				return texture2D(uSampler, tc);
+			}
+
+			vec4 sample(vec2 tc, int xo, int yo)
+			{
+				return texture2D(uSampler, vec2(tc.x + float(xo) * pixSizeX, tc.y - float(yo) * pixSizeY));
+			}
+
+			// Stores the raw texture coordinate in pixel, whether the pixel is even/odd in offset
+			void pixelOffset(vec2 tc, out ivec2 pixel, out ivec2 offset)
+			{
+				pixel = ivec2(tc * vec2(texWidth, texHeight));
+				offset = ivec2(mod(vec2(pixel), 2.0));
+			}
+
+			// Returns the average value of the pair with the lowest delta
+			// (abs(pair1[0] - pair1[1])), or the average of both pairs if the
+			// deltas are eqaul
+			float minDelta(vec2 pair1, vec2 pair2)
+			{
+				// Minimum gradient, or bilinear if equal gradients
+				float delta = abs(pair1[0] - pair1[1]) - abs(pair2[0] - pair2[1]);
+				if(delta == 0.0) {
+					return (pair1[0] + pair1[1] + pair2[0] + pair2[1]) * 0.25;
+				}
+				if(delta < 0.0) {
+					return (pair1[0] + pair1[1]) * 0.5;
+				}
+				return (pair2[0] + pair2[1]) * 0.5;
+			}
+
+			float red(vec2 tc)
+			{
+				ivec2 pxl, off;
+				pixelOffset(tc, pxl, off);
+
+				vec2 cell = vec2((floor((tc.x * texWidth) / cellSize) * cellSize + 1.5) / texWidth,
+						(ceil((tc.y * texHeight) / cellSize) * cellSize - 0.5) / texHeight);
+
+				if(tc.x <= pixSizeX && off.x == 0) {
+					return mix(sample(cell).r, sample(cell, 0, -2).r, float(off.y) / 2.0);
+				}
+
+				if(tc.y <= pixSizeY || off == ivec2(1, 1)) {
+					return sample(cell).r;
+				}
+
+				if(off == ivec2(0, 1)) {
+					return (sample(cell).r + sample(cell, -2, 0).r) / 2.0;
+				}
+
+				if(off == ivec2(1, 0)) {
+					return (sample(cell).r + sample(cell, 0, 2).r) / 2.0;
+				}
+
+				return minDelta(vec2(sample(cell).r, sample(cell, -2, 2).r),
+						vec2(sample(cell, -2, 0).r, sample(cell, 0, 2).r));
+			}
+
+			float green(vec2 tc)
+			{
+				ivec2 pxl, off;
+				pixelOffset(tc, pxl, off);
+
+				if(off == ivec2(0, 1) || off == ivec2(1, 0)) {
+					return texture2D(uSampler, tc).r;
+				}
+
+				return minDelta(vec2(sample(tc, -1, 0).r, sample(tc, 1, 0).r),
+						vec2(sample(tc, 0, -1).r, sample(tc, 0, 1).r));
+			}
+
+			float blue(vec2 tc)
+			{
+				ivec2 pxl, off;
+				pixelOffset(tc, pxl, off);
+
+				vec2 cell = vec2((floor((tc.x * texWidth) / cellSize) * cellSize + 0.5) / texWidth,
+						(ceil((tc.y * texHeight) / cellSize) * cellSize - 1.5) / texHeight);
+
+				if(tc.x <= pixSizeX && off.x == 0) {
+					return mix(sample(cell).r, sample(cell, 0, -2).r, float(off.y) / 2.0);
+				}
+
+				if(off == ivec2(1, 1)) {
+					return sample(cell).r;
+				}
+
+				if(off == ivec2(0, 1)) {
+					return (sample(cell).r + sample(cell, -2, 0).r) / 2.0;
+				}
+
+				if(off == ivec2(1, 0)) {
+					return (sample(cell).r + sample(cell, 0, 2).r) / 2.0;
+				}
+
+				return minDelta(vec2(sample(cell).r, sample(cell, -2, 2).r),
+						vec2(sample(cell, -2, 0).r, sample(cell, 0, 2).r));
+			}
+
+			vec4 demosaicSample(vec2 tc)
+			{
+				vec2 cell = vec2((floor((tc.x * texWidth) / cellSize) * cellSize + 0.5) / texWidth,
+						(ceil((tc.y * texHeight) / cellSize) * cellSize - 0.5) / texHeight);
+				vec2 offset = tc - cell;
+
+				return vec4(red(tc), green(tc), blue(tc), 1.0);
+			}
+
+			void main(void) {
+				vec4 tex = vec4(0.0);
+				tex = demosaicSample(vTexCoord);
+				//tex = vec4(vec3(red(vTexCoord)), 1.0);
+				//tex = vec4(vec3(green(vTexCoord)), 1.0);
+				//tex = vec4(vec3(blue(vTexCoord)), 1.0);
+				gl_FragColor = tex;
+			}
+		</script>
+
+	</head>
+	<body onload="startGL();">
+		<canvas id="glcanvas" width="640" height="480"></canvas>
+	</body>
+</html>

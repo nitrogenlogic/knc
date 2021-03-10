@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Depth Camera Controller Web Setup</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link type="text/css" rel="stylesheet" href="css/main.css">
+
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<!-- https://github.com/carhartl/jquery-cookie/blob/master/MIT-LICENSE.txt -->
+		<script type="text/javascript" src="js/jquery.cookie.js"></script>
+
+		<script type="text/javascript" src="js/jquery.event.drag-2.2.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_api.js"></script>
+		<script type="text/javascript" src="js/knc_common.js"></script>
+		<script type="text/javascript" src="js/knc_zone.js"></script>
+		<script type="text/javascript" src="js/knc_demosaic.js"></script>
+		<script type="text/javascript" src="js/knc_main.js"></script>
+	</head>
+	<body>
+		<div id="offline-dialog">
+			The depth camera server is offline.<br>Make sure the camera is connected.
+			<div class="subtitle">
+				<a href="/rules">Rules</a> |
+				<a href="/log">Event Log</a> |
+				<a href="/settings.html">Settings</a>
+			</div>
+		</div>
+		<div id="uiwrapper">
+			<div class="title">Depth Camera Controller Setup</div>
+			<div id="nav">
+				<div id="hostname">##HOSTNAME##.local</div>
+				<div id="status">
+					<span class="online">Online</span><span class="fps"></span><span class="offline">Offline</span>
+				</div>
+				<div class="subtitle">
+					Home |
+					<a href="/zones">Zones</a> |
+					<a href="/rules">Rules</a> |
+					<a href="/log">Event Log</a> |
+					<a href="/settings">Settings</a>
+				</div>
+			</div>
+			<div id="zonelisttabs">
+				<ul>
+					<li><a href="#zonelist">Zones</a></li>
+					<li style="float: right"><a class="undecorated"><span class="occupied_count">0</span> occupied</a></li>
+				</ul>
+				<div id="zonelist">
+					##ZONELIST##
+					<!-- TODO: Make this a tooltip -->
+					<div id="zonelist_help">
+						<p>Click and drag in an empty area in one of the views
+						to the right to create a new zone.</p>
+						<p>Click a zone's name above to show/hide its details.
+						Expanded zones are shown in front of non-expanded
+						zones.</p>
+						<p>Note: Video and Perspective views do not align
+						perfectly.  Brightness is calculated from
+						zones' location on the Video view.</p>
+					</div>
+				</div>
+			</div>
+			<div id="zonetabs">
+				<ul>
+					<li><a href="#zonetabs-1">Perspective</a></li>
+					<li><a href="#zonetabs-2">Overhead</a></li>
+					<li><a href="#zonetabs-3">Side</a></li>
+					<li><a href="#zonetabs-4">Front</a></li>
+					<li><a href="#zonetabs-5">Video</a></li>
+	
+					<!-- This next bit is very hackish, abusing jQuery behavior. -->
+					<li style="float: right;"><a id="showhide" style="cursor: pointer">Hide Zones</a></li>
+				</ul>
+				<div id="zonetabs-1" class="vis vis_perspective" data-view="perspective">
+					<div class="zonewrap">##ZONEDIVS##</div>
+					<img id="perspective_image" class="zoneview_image" src="blank.png">
+				</div>
+				<div id="zonetabs-2" class="vis vis_overhead" data-view="overhead">
+					<div class="zonewrap">##OVHDIVS##</div>
+					<img id="overhead_image" class="zoneview_image" src="blank.png">
+					<img id="overhead_grid" src="images/ovhgrid.png">
+					<div class="coord_overlay" id="overhead_coord">x: 0.0 &nbsp; z: 0.0</div>
+				</div>
+				<div id="zonetabs-3" class="vis vis_side" data-view="side">
+					<div class="zonewrap">##SIDEDIVS##</div>
+					<img id="side_image" class="zoneview_image" src="blank.png">
+					<img id="side_grid" src="images/sidegrid.png">
+					<div class="coord_overlay" id="side_coord">z: 0.0 &nbsp; y: 0.0</div>
+				</div>
+				<div id="zonetabs-4" class="vis vis_front" data-view="front">
+					<div class="zonewrap">##FRONTDIVS##</div>
+					<img id="front_image" class="zoneview_image" src="blank.png">
+					<img id="front_grid" src="images/frontgrid.png">
+					<div class="coord_overlay" id="front_coord">x: 0.0 &nbsp; y: 0.0</div>
+				</div>
+				<div id="zonetabs-5" class="vis vis_video" data-view="video">
+					<div class="zonewrap">##VIDEODIVS##</div>
+					<img id="video_image" class="zoneview_image" src="blank.png">
+				</div>
+			</div>
+			<div class="footer_links" id="update_control">
+				<!-- Ugly -->
+				<a class="stopzone" href="javascript:">Stop Zone Updates</a>
+				&nbsp;|
+				<a class="startzone" href="javascript:">Resume Zone Updates</a>
+				&nbsp;|
+				<a class="stopimage" href="javascript:">Stop Image Updates</a>
+				&nbsp;|
+				<a class="startimage" href="javascript:">Resume Image Updates</a>
+			</div>
+			<div class="footer_links">
+				<a class="uploadzones" href="/zoneupload.html">Upload Zones</a>
+				&nbsp;|
+				<a href="/zones.json?dl=1">Download Zones</a>
+				&nbsp;|
+				<a class="clearzones" href="/clearzones" rel="nofollow">Remove All Zones</a> <em>(Warning: cannot be undone)</em>
+				<br>
+				<a href="/pcltest.html">Experimental WebGL Interface</a>
+			</div>
+			<div class="copyright">Build ##BUILDNO## &copy;2015 Nitrogen Logic</div>
+		</div>
+	</body>
+</html>
+

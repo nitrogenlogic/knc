@@ -1,0 +1,5 @@
+APP_NAME="Depth Camera Controller Setup"
+APP_AUTHOR="Nitrogen Logic"
+APP_DESC="Web interface for creating and modifying Depth Camera Controller zones and related settings."
+APP_PATH=/
+APP_PORT=8089

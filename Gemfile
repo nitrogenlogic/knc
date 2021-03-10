@@ -1,0 +1,15 @@
+source 'https://rubygems.org'
+
+gem 'eventmachine'
+gem 'treetop'
+gem 'UPnP'
+gem 'escape_utils'
+gem 'eventmachine_httpserver'
+gem 'msgpack', '~> 1.3.3'
+gem 'byebug', '~> 11.0.1'
+gem 'pry-byebug', '~> 3.7.0'
+
+gem 'nlhue', '~> 0.2.0'
+gem 'xap_ruby'
+gem 'nl-fast_png'
+gem 'nl-knd_client'

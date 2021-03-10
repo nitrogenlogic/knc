@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<!-- http://arc.id.au/FilterDesign.html (for blur kernel):
+Example: low pass @ 1Hz, 36dB attenuation, 4096Fs, 21pts length
+Normalized with LibreOffice Calc -->
+<html>
+	<head>
+		<title>Image hole fill and smoothing library test</title>
+		<style type="text/css">
+			body {
+				background: #368;
+				background-repeat: no-repeat;
+				color: #ccc;
+				padding: 0;
+				margin: 0;
+				text-align: center;
+			}
+			body > p {
+				margin: 8px;
+				display: inline-block;
+				width: 200px;
+				text-align: center;
+			}
+			#glcanvas {
+				position: fixed;
+				top: 0;
+				left: 0;
+				pointer-events: none;
+				width: 100%;
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				border: 0;
+			}
+		</style>
+		<script src="js/sylvester.src.js" type="text/javascript"></script>
+		<script src="js/glUtils.js" type="text/javascript"></script><!-- I don't like code of unknown provenance. -->
+		<script src="js/knc_blur.js" type="text/javascript"></script>
+		<script type="text/javascript">
+			var startGL = function() {
+				function getShader(gl, domId) {
+					var shaderElem = document.getElementById(domId);
+
+					if(!shaderElem) {
+						throw "Shader '" + domId + "' not found in DOM.";
+					}
+
+					var shaderText = "";
+					var currentChild = shaderElem.firstChild;
+					while(currentChild) {
+						if(currentChild.nodeType == currentChild.TEXT_NODE) {
+							shaderText += currentChild.textContent;
+						}
+						currentChild = currentChild.nextSibling;
+					}
+
+					var shaderId;
+					if(shaderElem.type == "x-shader/x-fragment") {
+						console.log("Loading fragment shader from " + domId);
+						shaderId = gl.createShader(gl.FRAGMENT_SHADER);
+					} else if(shaderElem.type == "x-shader/x-vertex") {
+						console.log("Loading vertex shader from " + domId);
+						shaderId = gl.createShader(gl.VERTEX_SHADER);
+					} else {
+						alert("Invalid shader type " + shaderElem.type);
+						return null;
+					}
+
+					gl.shaderSource(shaderId, shaderText);
+					gl.compileShader(shaderId);
+					if(!gl.getShaderParameter(shaderId, gl.COMPILE_STATUS)) {
+						alert("An error occurred while compiling shader '" + domId + "': " +
+								gl.getShaderInfoLog(shaderId));
+						return null;
+					}
+
+					return shaderId;
+				}
+
+				var shaderProgram;
+				var aVertexPositionAttr;
+				var texCoordAttr;
+				function initShaders() {
+					var vertexShader = getShader(gl, "shader-vs01");
+					var fragmentShader = getShader(gl, "shader-fs01");
+
+					shaderProgram = gl.createProgram();
+					gl.attachShader(shaderProgram, vertexShader);
+					gl.attachShader(shaderProgram, fragmentShader);
+					gl.linkProgram(shaderProgram);
+
+					if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+						alert("Unable to initialize the shader program.");
+					}
+
+					gl.useProgram(shaderProgram);
+
+					aVertexPositionAttr = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+					gl.enableVertexAttribArray(aVertexPositionAttr);
+
+					texCoordAttr = gl.getAttribLocation(shaderProgram, "aTexCoord");
+					gl.enableVertexAttribArray(texCoordAttr);
+				}
+
+				var texFunc;
+				function initFramebuffer() {
+					texFunc = KNC.initBlur(gl, 640, 480);
+				}
+
+				var img;
+				var imgName = document.location.search.substring(1);
+				function initTextures() {
+					if(imgName.length == 0) {
+						imgName = "depth8.png";
+					}
+					img = new Image();
+					img.onload = function() {
+						texLoaded(img);
+						img.src = imgName + "?" + new Date().getTime();
+						// TODO: Track image update rate
+					}
+					img.onerror = function() {
+						setTimeout(function() {
+							img.src = imgName + "?" + new Date().getTime();
+							}, 1000);
+					}
+					img.src = imgName;
+				}
+
+				var frameFunc;
+				var tex;
+				function texLoaded(img) {
+					tex = texFunc(img, true, true);
+					drawScene();
+				}
+
+				var vtxBuf;
+				var idxBuf;
+				var idxCount;
+				var texCoordBuf;
+				function initBuffers() {
+					// Create/fill vertex buffers
+					var z = -Math.sqrt(3);
+					var vtx = [
+						-4/3, -1.0, z,
+						4/3, -1.0, z,
+						4/3, 1.0, z,
+						-4/3, 1.0, z,
+						];
+					vtxBuf = gl.createBuffer();
+					gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vtx), gl.STATIC_DRAW);
+
+					// Create/fill element buffer
+					var idx = [0, 1, 2, 0, 2, 3];
+					idxBuf = gl.createBuffer();
+					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+					gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+					idxCount = idx.length;
+
+					// Assign texture coordinates
+					var texCoords = [
+						0.0, 0.0,
+						1.0, 0.0,
+						1.0, 1.0,
+						0.0, 1.0,
+						];
+					texCoordBuf = gl.createBuffer();
+					gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+				}
+
+				var perspMatrix;
+				function uploadMatrices() {
+					var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+					gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspMatrix.flatten()));
+				}
+
+				function drawScene() {
+					gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+					gl.clearColor(0.0, 0.0, 0.0, 1.0);
+					gl.clearDepth(1.0);
+					gl.enable(gl.BLEND);
+					gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+					gl.depthFunc(gl.LEQUAL);
+					gl.enable(gl.DEPTH_TEST);
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+					gl.useProgram(shaderProgram);
+
+					var w, h;
+					w = canvas.offsetWidth;
+					h = canvas.offsetHeight;
+					gl.viewport(0, 0, canvas.width, canvas.height);
+
+					perspMatrix = makePerspective(
+							60,
+							w / h,
+							0.1,
+							100
+							);
+
+					uploadMatrices();
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+					gl.vertexAttribPointer(aVertexPositionAttr, 3, gl.FLOAT, false, 0, 0);
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+					gl.vertexAttribPointer(texCoordAttr, 2, gl.FLOAT, false, 0, 0);
+
+					gl.activeTexture(gl.TEXTURE0);
+					gl.bindTexture(gl.TEXTURE_2D, tex);
+					gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+
+					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+					gl.drawElements(gl.TRIANGLES, idxCount, gl.UNSIGNED_SHORT, 0);
+				}
+
+				var canvas;
+				var gl;
+				function setupGL() {
+					canvas = document.getElementById('glcanvas');
+					canvas.width = Math.max(640, canvas.offsetWidth);
+					canvas.height = Math.max(480, canvas.offsetHeight);
+
+					gl = canvas.getContext('webgl');
+					if(gl == null) {
+						console.log('No webgl context');
+						gl = canvas.getContext('experimental-webgl');
+					} else {
+						console.log('Got webgl context');
+					}
+					if(gl == null) {
+						document.body.innerHTML =
+							'<p class="glerror">It appears your browser does not support WebGL.</p>';
+						return;
+					} else {
+						console.log('Got experimental-webgl context');
+					}
+
+					if(gl.getExtension('OES_texture_float') == null) {
+						alert('OES_texture_float extension is not supported.');
+					}
+
+					initTextures();
+					initShaders();
+					initBuffers();
+					initFramebuffer();
+				}
+
+				return setupGL;
+			}();
+		</script>
+
+		<script id="shader-vs01" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 aVertexPosition;
+			attribute vec2 aTexCoord;
+
+			uniform mat4 uPMatrix; // Projection matrix
+
+			varying vec2 vTexCoord;
+
+			void main(void) {
+				gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);
+				vTexCoord = aTexCoord;
+			}
+		</script>
+		<script id="shader-fs01" type="x-shader/x-fragment">
+			precision highp float;
+			varying vec2 vTexCoord;
+			uniform sampler2D uSampler;
+
+			void main(void) {
+				gl_FragColor = texture2D(uSampler, vTexCoord);
+			}
+		</script>
+	</head>
+	<body onload="startGL();">
+		<canvas id="glcanvas"></canvas>
+	</body>
+</html>

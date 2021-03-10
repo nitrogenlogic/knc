@@ -1,0 +1,262 @@
+@charset "UTF-8";
+/*
+ * Styles for the Depth Camera Controller's Zones page.
+ * (C)2013 Mike Bourgeous
+ */
+
+body#zones_page {
+	width: 900px;
+}
+
+table.zone_detail {
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	width: 100%;
+	margin: 1em 0 0;
+}
+
+/* Row coloring */
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2) > td,
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2) > th {
+	background: #3f3f3f;
+}
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2) > td,
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2) > th {
+	background: #373737;
+}
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2).highlight > td,
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2).highlight > th,
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2):target > td,
+table.zone_detail > tbody:nth-child(2n+1) > tr:nth-child(2):target > th {
+	background: #3f3f3f;
+	-webkit-animation: highlight_target_even 1.5s ease-in-out;
+	-moz-animation: highlight_target_even 1.5s ease-in-out;
+	animation: highlight_target_even 1.5s ease-in-out;
+}
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2).highlight > td,
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2).highlight > th,
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2):target > td,
+table.zone_detail > tbody:nth-child(2n) > tr:nth-child(2):target > th {
+	background: #373737;
+	-webkit-animation: highlight_target_odd 1.5s ease-in-out;
+	-moz-animation: highlight_target_odd 1.5s ease-in-out;
+	animation: highlight_target_odd 1.5s ease-in-out;
+}
+
+#no_zone_rows {
+	display: none;
+}
+#no_zone_rows:last-child {
+	display: table-row-group;
+}
+#no_zone_rows td {
+	text-align: center;
+	font-style: italic;
+	opacity: 0.5;
+	padding-top: 16px;
+	padding-bottom: 16px;
+}
+
+tr.zone_summary {
+	white-space: nowrap;
+	text-align: center;
+}
+tr.zone_summary th.name > div {
+	position: relative;
+}
+tbody tr.zone_summary th.name div .row_button {
+	position: absolute;
+	display: block;
+	top: 0;
+	bottom: 0;
+	vertical-align: middle;
+	line-height: 26px;
+
+	color: #999;
+
+	cursor: pointer;
+
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+
+	text-shadow: 2px 2px 5px #111;
+}
+tbody tr.zone_summary th.name div .row_delete {
+	line-height: 30px;
+	right: 4px;
+}
+tbody tr.zone_summary th.name div .row_delete:hover,
+tbody tr.zone_summary th.name div .row_delete:focus {
+	color: #d12;
+}
+tbody tr.zone_summary th.name div .row_toggle {
+	left: 4px;
+
+	-webkit-transform: rotate(0);
+	-moz-transform: rotate(0);
+	-o-transform: rotate(0);
+	-ms-transform: rotate(0);
+	transform: rotate(0);
+
+	transition-property: left, text-shadow, -webkit-transform;
+	transition-property: left, text-shadow, -moz-transform;
+	transition-property: left, text-shadow, -o-transform;
+	transition-property: left, text-shadow, -ms-transform;
+	transition-property: left, text-shadow, transform;
+	transition-duration: 0.3s;
+	transition-timing-function: linear;
+}
+tbody tr.zone_summary th.name div .row_toggle:hover,
+tbody tr.zone_summary th.name div .row_toggle:focus {
+	color: #7d8;
+}
+tbody.opened tr.zone_summary th.name div .row_toggle {
+	left: 2px;
+
+	-webkit-transform: rotate(90deg);
+	-moz-transform: rotate(90deg);
+	-o-transform: rotate(90deg);
+	-ms-transform: rotate(90deg);
+	transform: rotate(90deg);
+
+	text-shadow: 2px -2px 5px #111;
+}
+tr.zone_summary td {
+	width: 4em;
+}
+
+tr.zone_extra {
+	display: none;
+}
+tr.zone_extra > td {
+	padding-left: 0px;
+	padding-right: 0px;
+}
+
+table.zone_extra {
+	width: 100%;
+	font-size: 13px;
+	border-collapse: collapse;
+	border-spacing: 0;
+	border: 0;
+}
+table.zone_extra th {
+	width: 1%;
+}
+table.zone_extra th {
+	text-align: right;
+}
+table.zone_extra td {
+	border-collapse: collapse;
+	border-radius: 0 !important;
+	text-align: center;
+	padding: 2px 2px 2px 0;
+	margin: 0;
+}
+
+table.zone_extra input, table.zone_extra select {
+	border: solid 1px #3f3f3f;
+	border-radius: 8px;
+	box-shadow: 1px 1px 5px -1px #151515 inset;
+	
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-ms-box-sizing: border-box;
+	-o-box-sizing: border-box;
+	box-sizing: border-box;
+
+	background: rgba(0, 0, 0, 0.18);
+	color: inherit;
+
+	margin: 0;
+	padding: 1px 4px;
+	
+	min-width: 5.5em;
+	width: 100%;
+	min-height: 24px;
+	height: 100%;
+	
+	overflow: hidden;
+
+	font-size: inherit;
+	font-family: inherit;
+	text-align: right;
+}
+table.zone_extra input:focus, table.zone_extra select:focus {
+	border: solid 1px #888;
+	background: rgba(24, 24, 24, 0.18);
+	outline: none;
+}
+
+table.zone_extra input::-moz-selection, table.zone_extra select::-moz-selection {
+	color: inherit;
+	background: #1b6c11;
+}
+table.zone_extra input::selection, table.zone_extra select::selection {
+	color: inherit;
+	background: #1b6c11;
+}
+
+table.zone_extra input[type="checkbox"] {
+	min-width: 14px;
+	width: 14px;
+	min-height: 14px;
+	height: 14px;
+	margin: 0 auto;
+	vertical-align: middle;
+	box-shadow: none;
+	border: none;
+}
+table.zone_extra input[type="checkbox"]:focus {
+	box-shadow: 0 0 0 1px #999;
+}
+
+table.zone_detail input[type="text"] {
+	text-align: center;
+	background: transparent;
+	text-shadow: inherit;
+	color: inherit;
+	font-size: inherit;
+	font-family: inherit;
+	font-weight: inherit;
+	border: 0;
+	margin: 0;
+	padding: 2px 22px;
+	width: 100%;
+	height: 100%;
+	min-height: 30px;
+
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-ms-box-sizing: border-box;
+	-o-box-sizing: border-box;
+	box-sizing: border-box;
+}
+table.zone_detail input[type="text"]:hover {
+	color: #aaa;
+	background: #323232;
+}
+table.zone_detail input[type="text"]:focus, table.zone_detail input[type="text"]:hover:focus {
+	color: #ccc;
+	background: #2f2f2f;
+}
+table.zone_detail th.name {
+	padding: 0;
+	border: 0;
+}
+
+input[data-attr].skipped_input, select[data-attr].skipped_input,
+input[data-attr].skipped_input:focus, select[data-attr].skipped_input:focus {
+	border: solid 1px #f81 !important;
+	background: #541 !important;
+}
+
+tbody#zone_button_row td {
+	text-align: center;
+	vertical-align: middle;
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}

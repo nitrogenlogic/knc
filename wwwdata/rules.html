@@ -1,0 +1,63 @@
+<html>
+	<head>
+		<title>Automation Rules - Nitrogen Logic Depth Camera Controller</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link rel="stylesheet" type="text/css" href="css/main.css">
+		<link rel="stylesheet" type="text/css" href="css/rules.css">
+
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_rules.js"></script>
+	</head>
+	<body>
+		<div id="content">
+			<div class="title">Automation Rules</div>
+			<div id="nav">
+				<div id="hostname">##HOSTNAME##.local</div>
+				<div class="subtitle">
+					<a href="/">Home</a> |
+					<a href="/zones">Zones</a> |
+					Rules |
+					<a href="/log">Event Log</a> |
+					<a href="/settings">Settings</a>
+				</div>
+			</div>
+			<p>Here you can configure actions to take based on changes in a Zone's
+			state.  A rule consists of</p>
+			<ul>
+				<li>a <b>Trigger</b>, which is the source of change events,</li>
+				<li>a <b>Filter</b>, which determines whether to send change
+				events to the actions based on a <b>Condition</b>,</li>
+				<li>and a pair of <b>Action</b>s, one of which is triggered when
+				the filter's Condition becomes true, and one for when the
+				Condition becomes false.</li>
+			</ul>
+			<table id="rules" class="knc_table">
+				<tr><th>#</th><th>Trigger</th><th>Filter</th><th>Action</th><th></th></tr>
+				##RULES##
+				<tr>
+					<td colspan="5" class="button_row">
+						<form method="POST" action="/rules/add_rule">
+							<input type="hidden" name="redir" value="1">
+							<input type="submit" value="Add a Rule">
+							<!-- TODO: Have add_rule redirect back -->
+						</form>
+					</td>
+				</tr>
+			</table>
+			<div class="footer_links">
+				<!-- TODO: JavaScript upload dialogs, use &bull; -->
+				<a class="uploadrules" href="/rulesupload.html">Upload Rules</a>
+				|
+				<a href="/rules/rules?dl=1">Download Rules</a>
+				|
+				<a href="/rules/clear_rules" rel="nofollow">Remove All Rules</a>
+				<em>(Warning: cannot be undone)</em>
+			</div>
+			<div class="copyright">&copy;2015 Nitrogen Logic</div>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,55 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    UPnP (1.2.0)
+      builder
+      soap4r
+    builder (3.2.4)
+    byebug (11.0.1)
+    coderay (1.1.3)
+    escape_utils (1.2.1)
+    eventmachine (1.2.7)
+    eventmachine_httpserver (0.2.1)
+    httpclient (2.8.3)
+    method_source (1.0.0)
+    msgpack (1.3.3)
+    nl-fast_png (0.0.1)
+    nl-knd_client (0.0.2)
+      nl-fast_png
+    nlhue (0.2.0)
+      UPnP (~> 1.2)
+      eventmachine (~> 1.0)
+    polyglot (0.3.5)
+    pry (0.14.0)
+      coderay (~> 1.1)
+      method_source (~> 1.0)
+    pry-byebug (3.7.0)
+      byebug (~> 11.0)
+      pry (~> 0.10)
+    soap4r (1.5.8)
+      httpclient (>= 2.1.1)
+    treetop (1.6.11)
+      polyglot (~> 0.3)
+    xap_ruby (0.1.1)
+      eventmachine (>= 0.12.10)
+      treetop (>= 1.4.10)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  UPnP
+  byebug (~> 11.0.1)
+  escape_utils
+  eventmachine
+  eventmachine_httpserver
+  msgpack (~> 1.3.3)
+  nl-fast_png
+  nl-knd_client
+  nlhue (~> 0.2.0)
+  pry-byebug (~> 3.7.0)
+  treetop
+  xap_ruby
+
+BUNDLED WITH
+   2.1.4

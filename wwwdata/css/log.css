@@ -1,0 +1,67 @@
+@charset "UTF-8";
+/*
+ * Styles for Depth Camera Controller event log.
+ * (C)2014 Mike Bourgeous
+ */
+
+table#eventlog > tbody > tr:first-child > td {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+table#eventlog {
+	width: 100%;
+	margin: 0 auto;
+}
+
+table#eventlog td.log_index {
+	text-align: center;
+	color: #888;
+	white-space: nowrap;
+}
+table#eventlog td.log_date {
+	width: 16em;
+	white-space: nowrap;
+}
+table#eventlog td.event_src {
+	text-align: center;
+}
+table#eventlog td.log_msg {
+	max-width: 26em;
+	overflow-x: auto;
+}
+
+.log_error {
+	color: red;
+}
+.log_warning {
+	color: #ed7;
+}
+.log_good {
+	color: #5c5;
+}
+.log_debug {
+	color: #8ac4ff;
+}
+
+.event_src_System {
+	color: #6e6;
+}
+.event_src_xAP {
+	color: #eaea66;
+}
+.event_src_Zone {
+	color: #b0a0ff;
+}
+.event_src_Camera {
+	color: #ffa533;
+}
+.event_src_Firmware {
+	color: #f55;
+}
+.event_src_Hue {
+	color: #9ce;
+}
+.event_src_User {
+	color: #909090;
+}

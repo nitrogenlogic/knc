@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<!-- http://www.gamerendering.com/2008/10/11/gaussian-blur-filter-shader/ -->
+<!-- http://learningwebgl.com/blog/?p=1786 -->
+<!-- http://arc.id.au/FilterDesign.html (for blur kernel):
+Example: low pass @ 1Hz, 36dB attenuation, 4096Fs, 21pts length
+Normalized with LibreOffice Calc -->
+<html>
+	<head>
+		<title>Learning WebGL - Blur test</title>
+		<style type="text/css">
+			body {
+				background: #368;
+				background-repeat: no-repeat;
+				color: #ccc;
+				padding: 0;
+				margin: 0;
+				text-align: center;
+			}
+			body > p {
+				margin: 8px;
+				display: inline-block;
+				width: 200px;
+				text-align: center;
+			}
+			#glcanvas {
+				position: fixed;
+				top: 0;
+				left: 0;
+				pointer-events: none;
+				width: 100%;
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				border: 0;
+			}
+		</style>
+		<script src="js/sylvester.src.js" type="text/javascript"></script>
+		<script src="js/glUtils.js" type="text/javascript"></script><!-- I don't like code of unknown provenance. -->
+		<script type="text/javascript">
+			function getShader(gl, domId) {
+				var shaderElem = document.getElementById(domId);
+
+				if(!shaderElem) {
+					throw "Shader '" + domId + "' not found in DOM.";
+				}
+
+				var shaderText = "";
+				var currentChild = shaderElem.firstChild;
+				while(currentChild) {
+					if(currentChild.nodeType == currentChild.TEXT_NODE) {
+						shaderText += currentChild.textContent;
+					}
+					currentChild = currentChild.nextSibling;
+				}
+
+				var shaderId;
+				if(shaderElem.type == "x-shader/x-fragment") {
+					console.log("Loading fragment shader from " + domId);
+					shaderId = gl.createShader(gl.FRAGMENT_SHADER);
+				} else if(shaderElem.type == "x-shader/x-vertex") {
+					console.log("Loading vertex shader from " + domId);
+					shaderId = gl.createShader(gl.VERTEX_SHADER);
+				} else {
+					alert("Invalid shader type " + shaderElem.type);
+					return null;
+				}
+
+				gl.shaderSource(shaderId, shaderText);
+				gl.compileShader(shaderId);
+				if(!gl.getShaderParameter(shaderId, gl.COMPILE_STATUS)) {
+					alert("An error occurred while compiling shader '" + domId + "': " +
+							gl.getShaderInfoLog(shaderId));
+					return null;
+				}
+
+				return shaderId;
+			}
+
+			function simpleProgram(gl, vtxShaderId, fragShaderId) {
+				var vtxShader = getShader(gl, vtxShaderId);
+				var fragShader = getShader(gl, fragShaderId);
+				var program = gl.createProgram();
+				gl.attachShader(program, vtxShader);
+				gl.attachShader(program, fragShader);
+				gl.linkProgram(program);
+				if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+					alert("Unable to initialize the shader program: " + 
+							gl.getProgramInfoLog(program));
+				}
+
+
+				var attrib = {};
+				for(var i = 0; i < gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES); i++) {
+					var name = gl.getActiveAttrib(program, i).name.replace(/\[[0-9]*\]/, '');
+					console.log('Attribute: ' + name);
+					attrib[name] = gl.getAttribLocation(program, name);
+					gl.enableVertexAttribArray(attrib[name]);
+				}
+				program.attr = attrib;
+
+				var uniform = {};
+				for(var i = 0; i < gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS); i++) {
+					var name = gl.getActiveUniform(program, i).name.replace(/\[[0-9]*\]/, '');
+					console.log('Uniform: ' + name);
+					uniform[name] = gl.getUniformLocation(program, name);
+				}
+				program.uniform = uniform;
+
+				gl.useProgram(program);
+				return program;
+			}
+
+			var drawProgram;
+			var shaderProgram;
+			function initShaders() {
+				drawProgram = simpleProgram(gl, "drawVtx", "drawFrag");
+				shaderProgram = simpleProgram(gl, "blurVtx", "blurFrag");
+
+				gl.uniform1fv(shaderProgram.uniform.kernel, new Float32Array([
+							0.015720524,
+							0.0227074236,
+							0.0301310044,
+							0.0377001456,
+							0.0452692868,
+							0.0522561863,
+							0.0586608443,
+							0.0639010189,
+							0.0678311499,
+							0.0703056769,
+							0.0710334789,
+							]));
+			}
+
+			function createFB(w, h, tex) {
+				var fb = gl.createFramebuffer();
+				gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+				fb.width = w;
+				fb.height = h;
+
+				fb.tex = tex || gl.createTexture();
+				fb.tex.width = w;
+				fb.tex.height = h;
+				gl.bindTexture(gl.TEXTURE_2D, fb.tex);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fb.width, fb.height, 0, gl.RGBA, gl.FLOAT, null);
+
+				var rbuf = gl.createRenderbuffer();
+				gl.bindRenderbuffer(gl.RENDERBUFFER, rbuf);
+				gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, fb.width, fb.height);
+
+				gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.tex, 0);
+				gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rbuf);
+
+				gl.bindTexture(gl.TEXTURE_2D, null);
+				gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+				return fb;
+			}
+
+			var fb, fb2;
+			function initFramebuffer() {
+				fb = createFB(480, 640);
+				fb2 = createFB(640, 480);
+			}
+
+			var tex;
+			var img;
+			var imgName = document.location.search.substring(1);
+			function initTextures() {
+				if(imgName.length == 0) {
+					imgName = "depth8.png";
+				}
+				tex = gl.createTexture();
+				img = new Image();
+				img.onload = function() {
+					texLoaded(img, tex);
+					setTimeout(function() {
+							img.src = imgName + "?" + new Date().getTime();
+							},
+							10);
+				}
+				img.src = imgName;
+			}
+
+			function texLoaded(img, tex) {
+				tex.width = img.width;
+				tex.height = img.height;
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+				gl.bindTexture(gl.TEXTURE_2D, null);
+			}
+
+			var vtxBuf;
+			var vtx90Buf;
+			var idxBuf;
+			var idxCount;
+			var texCoordBuf;
+			var tc90Buf;
+			function initBuffers() {
+				// Create/fill vertex buffers
+				var z = -Math.sqrt(3);
+				var vtx = [
+					-4/3, -1.0, z,
+					4/3, -1.0, z,
+					4/3, 1.0, z,
+					-4/3, 1.0, z,
+						];
+				vtxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vtx), gl.STATIC_DRAW);
+
+				vtx = [
+					0.75, -1.0, z,
+					0.75, 1.0, z,
+					-0.75, 1.0, z,
+					-0.75, -1.0, z,
+						];
+				vtx90Buf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, vtx90Buf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vtx), gl.STATIC_DRAW);
+
+				// Create/fill element buffer
+				var idx = [0, 1, 2, 0, 2, 3];
+				idxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+				idxCount = idx.length;
+
+				// Assign texture coordinates
+				var texCoords = [
+					0.0, 0.0,
+					1.0, 0.0,
+					1.0, 1.0,
+					0.0, 1.0,
+						];
+				texCoordBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
+				texCoords = [
+					1.0, 0.0,
+					1.0, 1.0,
+					0.0, 1.0,
+					0.0, 0.0,
+						];
+				tc90Buf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, tc90Buf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+			}
+
+			var perspMatrix;
+			function uploadMatrices(program) {
+				gl.uniformMatrix4fv(program.uniform.uPMatrix, false, new Float32Array(perspMatrix.flatten()));
+			}
+
+			function drawScene(program, fb, tex, vtxBuf, texCoordBuf, blur, fill) {
+				gl.useProgram(program);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				var w, h;
+				if(fb) {
+					w = fb.width;
+					h = fb.height;
+					gl.viewport(0, 0, w, h);
+				} else {
+					w = canvas.offsetWidth;
+					h = canvas.offsetHeight;
+					gl.viewport(0, 0, canvas.width, canvas.height);
+				}
+
+				perspMatrix = makePerspective(
+						60,
+						w / h,
+						0.1,
+						100
+						);
+				uploadMatrices(program);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+				gl.vertexAttribPointer(program.attr.aVtxPos, 3, gl.FLOAT, false, 0, 0);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.vertexAttribPointer(program.attr.aTexCoord, 2, gl.FLOAT, false, 0, 0);
+
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(program.uniform.uSampler, 0);
+
+				gl.uniform1f(program.uniform.pixSize, 1.0 / tex.width);
+				gl.uniform1i(program.uniform.blur, blur);
+				gl.uniform1i(program.uniform.fill, fill);
+
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.drawElements(gl.TRIANGLES, idxCount, gl.UNSIGNED_SHORT, 0);
+			}
+
+			var canvas;
+			var gl;
+			function startGL() {
+				canvas = document.getElementById('glcanvas');
+				canvas.width = Math.max(640, canvas.offsetWidth);
+				canvas.height = Math.max(480, canvas.offsetHeight);
+
+				gl = canvas.getContext('webgl');
+				if(gl == null) {
+					console.log('No webgl context');
+					gl = canvas.getContext('experimental-webgl');
+				} else {
+					console.log('Got webgl context');
+				}
+				if(gl == null) {
+					document.body.innerHTML = 
+						'<p class="glerror">It appears your browser does not support WebGL.</p>';
+					return;
+				} else {
+					console.log('Got experimental-webgl context');
+				}
+
+				if(gl.getExtension('OES_texture_float') == null) {
+					alert('OES_texture_float extension is not supported.');
+				}
+
+				initTextures();
+				initShaders();
+				initBuffers();
+				initFramebuffer();
+
+				gl.clearColor(0.0, 0.0, 0.0, 1.0);
+				gl.clearDepth(1.0);
+				gl.enable(gl.BLEND);
+				gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+				gl.depthFunc(gl.LEQUAL);
+				gl.enable(gl.DEPTH_TEST);
+				gl.depthFunc(gl.LEQUAL);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				var frameFunc;
+				if(window.mozRequestAnimationFrame) {
+					console.log("Using Mozilla requestAnimationFrame for timing.");
+					frameFunc = window.mozRequestAnimationFrame;
+				} else if(window.webkitRequestAnimationFrame) {
+					console.log("Using WebKit requestAnimationFrame for timing.");
+					frameFunc = window.webkitRequestAnimationFrame;
+				} else if(window.msRequestAnimationFrame) {
+					console.log("Using Microsoft requestAnimationFrame for timing.");
+					frameFunc = window.msRequestAnimationFrame;
+				} else if(window.requestAnimationFrame) {
+					console.log("Cool, using standard requestAnimationFrame for timing.");
+					frameFunc = window.requestAnimationFrame;
+				} else {
+					console.log("Using setTimeout for timing.");
+					frameFunc = function(func) {
+						setTimeout(func, 16);
+					}
+				}
+
+				var frameCallback = function() {
+					drawScene(shaderProgram, fb, tex, vtx90Buf, texCoordBuf, 1, 1);
+					drawScene(shaderProgram, fb2, fb.tex, vtxBuf, tc90Buf, 1, 0);
+					drawScene(drawProgram, null, fb2.tex, vtxBuf, texCoordBuf, 0, 0);
+					frameFunc(frameCallback);
+				};
+				frameFunc(frameCallback);
+			}
+		</script>
+
+		<script id="drawVtx" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 aVtxPos;
+			attribute vec2 aTexCoord;
+
+			uniform mat4 uPMatrix; // Projection matrix
+
+			varying vec2 vTexCoord;
+
+			void main(void) {
+				gl_Position = uPMatrix * vec4(aVtxPos, 1.0);
+				vTexCoord = aTexCoord;
+			}
+		</script>
+		<script id="drawFrag" type="x-shader/x-fragment">
+			precision highp float;
+			varying vec2 vTexCoord;
+			uniform sampler2D uSampler;
+
+			void main(void) {
+				gl_FragColor = texture2D(uSampler, vTexCoord);
+			}
+		</script>
+
+		<script id="blurVtx" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 aVtxPos;
+			attribute vec2 aTexCoord;
+
+			uniform mat4 uPMatrix; // Projection matrix
+
+			varying vec2 vTexCoord;
+
+			void main(void) {
+				gl_Position = uPMatrix * vec4(aVtxPos, 1.0);
+				vTexCoord = aTexCoord;
+			}
+		</script>
+		<script id="blurFrag" type="x-shader/x-fragment">
+			precision highp float;
+
+			varying vec2 vTexCoord;
+
+			uniform sampler2D uSampler;
+
+			uniform float pixSize;
+			uniform lowp int blur;
+			uniform lowp int fill;
+			uniform float kernel[11];
+
+			vec4 sample(vec2 tc, int offset)
+			{
+				return texture2D(uSampler, vec2(tc.x - float(offset) * pixSize, tc.y));
+			}
+
+			/* 0th-order modified Bessel function of the first kind */
+			float i_0(float val)
+			{
+				/* http://arc.id.au/FilterDesign.html (modified for GPU) */
+				float d = 0.0;
+				float ds = 1.0;
+				float s = 1.0;
+
+				/* Testing with JavaScript showed no results took longer than 8 iterations. */
+				for(int i = 0; i < 10; i++) {
+					d += 2.0;
+					ds *= val*val / (d*d);
+					s += ds;
+
+					if(ds > s * 1e-6) {
+						break;
+					}
+				}
+
+				return s;
+			}
+
+			float kaiser(int index, int count)
+			{
+				const float atten = 36.0;
+				float alpha = 0.5842 * pow(atten - 21.0, 0.4) + 0.07886 * (atten - 21.0);
+				float i0_alpha = i_0(alpha);
+				float np = float(count - 1) * 0.5;
+				float b = (float(index) - np) / np;
+
+				return i_0(alpha * sqrt(1.0 - b * b)) / i0_alpha;
+			}
+
+			vec4 fillSample(vec2 tc)
+			{
+				vec4 base = texture2D(uSampler, tc);
+				vec4 diag = vec4(0.0);
+				vec4 dist = vec4(0.0);
+				vec2 st;
+				bool set;
+
+				if(base.r != 0.0) {
+					return base;
+				}
+
+				for(int i = 1; i < 32; i += 1) {
+					set = false;
+					/* TODO: pass 1/w and 1/h in a vec2 uniform */
+					if(diag[0] == 0.0) {
+						set = true;
+						st = vec2(tc.s + float(i) / 640.0, tc.t + float(i) / 480.0);
+						diag[0] = texture2D(uSampler, st).r;
+						dist[0] = float(i);
+					}
+					if(diag[1] == 0.0) {
+						set = true;
+						st = vec2(tc.s + float(i) / 640.0, tc.t - float(i) / 480.0);
+						diag[1] = texture2D(uSampler, st).r;
+						dist[1] = float(i);
+					}
+					if(diag[2] == 0.0) {
+						set = true;
+						st = vec2(tc.s - float(i) / 640.0, tc.t - float(i) / 480.0);
+						diag[2] = texture2D(uSampler, st).r;
+						dist[2] = float(i);
+					}
+					if(diag[3] == 0.0) {
+						set = true;
+						st = vec2(tc.s - float(i) / 640.0, tc.t + float(i) / 480.0);
+						diag[3] = texture2D(uSampler, st).r;
+						dist[3] = float(i);
+					}
+					if(!set) {
+						break;
+					}
+				}
+
+				float a = mix(diag[0], diag[2], dist[0] / (dist[0] + dist[2]));
+				float b = mix(diag[1], diag[3], dist[1] / (dist[1] + dist[3]));
+
+				return vec4(vec3(0.5 * (a + b)), 1.0);
+			}
+
+			float kernVal(int index)
+			{
+				/* GLSL doesn't permit variable array offsets. */
+				if(index == 0) {
+					return kernel[0];
+				} else if(index == 1) {
+					return kernel[1];
+				} else if(index == 2) {
+					return kernel[2];
+				} else if(index == 3) {
+					return kernel[3];
+				} else if(index == 4) {
+					return kernel[4];
+				} else if(index == 5) {
+					return kernel[5];
+				} else if(index == 6) {
+					return kernel[6];
+				} else if(index == 7) {
+					return kernel[7];
+				} else if(index == 8) {
+					return kernel[8];
+				} else if(index == 9) {
+					return kernel[9];
+				} else if(index == 10) {
+					return kernel[10];
+				}
+			}
+
+			vec4 blurSample(vec2 tc)
+			{
+				float limitUp;
+				float limitDn;
+				#define RANGE(d) (limitDn < (d) && (d) < limitUp)
+
+				vec4 sum = vec4(0.0);
+				vec4 base = sample(tc, 0);
+				vec4 s;
+				float total = 0.0000001;
+				float kv, d;
+
+				if(base.r == 0.0) {
+					if(fill != 0) {
+						return fillSample(tc);
+					} else {
+						return vec4(0.0, 0.0, 0.0, 1.0);
+					}
+				}
+
+				limitDn = -mix(9.0 / 256.0, 2.0 / 256.0, base.r);
+				limitUp = mix(15.0 / 256.0, 3.0 / 256.0, base.r);
+
+				for(int i = -10; i < 0; i++) {
+					kv = kernVal(i + 10);
+					s = sample(tc, i);
+					d = s.r - base.r;
+					if(s.r != 0.0 && RANGE(d)) {
+						total += kv;
+						sum += s * kv;
+					}
+				}
+				for(int i = 0; i <= 10; i++) {
+					kv = kernVal(10 - i);
+					s = sample(tc, i);
+					d = s.r - base.r;
+					if(s.r != 0.0 && RANGE(d)) {
+						total += kv;
+						sum += s * kv;
+					}
+				}
+
+				sum /= total;
+
+				if(RANGE(sum.r - base.r)) {
+					return sum;
+				} else {
+					return base;
+				}
+			}
+
+			void main(void) {
+				vec4 tex;
+				if(blur == 1) {
+					tex = blurSample(vTexCoord);
+				} else if(blur == 0) {
+					if(fill != 0) {
+						tex = fillSample(vTexCoord);
+					} else {
+						tex = texture2D(uSampler, vTexCoord);
+					}
+				} else if(blur <= -1) {
+					tex = 16.0 * (texture2D(uSampler, vTexCoord) + 0.025 * float(blur));
+				}
+				gl_FragColor = tex;
+			}
+		</script>
+
+	</head>
+	<body onload="startGL();">
+		<canvas id="glcanvas"></canvas>
+	</body>
+</html>

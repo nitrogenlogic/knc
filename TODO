@@ -1,0 +1,195 @@
+Benchmark the eventmachine queue depth.
+Periodically (hourly?  daily?) back up the zone list using a script that checks
+for changes to /var/lib/knd/zones.knd
+
+Ignore the first second or so of depth information while the camera calibrates.
+
+http://bugs.jqueryui.com/ticket/4152 (shrinking resizable with box-sizing)
+8-bit world-space 320x240 depth images (resolution of ~2cm)
+Zone activity by surface area rather than raw pixel population
+Show distance and xyz coords at a given pixel in tooltip/overlay/sidebar/etc
+for perspective view.
+Use RGB color for "8-bit" depth image to convey more values.  Use a
+red-orange-yellow-white palette, then calculate the depth value from the image
+data as something like (r + b) to get 510 depth values (resolution of ~1cm).
+Color perspective and projected view pixels according to the zone(s) in which
+they fall.
+Blob tracking (identify and report size and location of point clusters).  Will
+require background removal.
+Finish refactoring zones in HTML/JavaScript.
+Add C-style escape/unescape to escape_utils.
+Allow changing the overhead/side/front plot image brightness by making the
+pixel-increment value a parameter and exposing the parameter to the HTML.
+Zone snapshots, saved every time the zone list is modified, to allow
+implementing undo.
+Move overhead view origin to bottom of image?
+Add hover state for zone list entries (highlight zone div when list is hovered)
+WebGL-based 3D view.
+Ability to edit zone data by clicking a value in the zone list details.
+Ability to zoom in for finer editing control.
+Fix zones with numeric names going to the top of the list in Chrome.
+Fix zones with names that start with numbers showing up as both their name and
+initial number in the zone list in Chrome and Firefox.
+Find out what causes the jquery-ui .js GET request to fail occasionally (Chrome
+only?)
+Allow zone creation when zones are hidden.
+Make ZMAX (currently 7000) configurable, and report it to the web interface.
+Make configurable xmin/xmax/ymin/ymax, and/or implement background removal, so
+that ceilings and walls don't interfere with scene visibility.
+Add an integer mode, or just use integers by default (parsing floats is slow).
+Add a crosshair at the current mouse location.
+
+Create a minimal test case for slow WebGL blur shader compilation on Windows
+browsers using ANGLE when hole filling is included, and report a bug to the
+Firefox and Chromium projects.  It is especially problematic on Firefox, as
+shader compilation and linking appears to take place on the UI thread, causing
+the UI to become unresponsive for over 30s.
+
+Fix zone updates dying when a zone is dragged around rapidly.
+Keep the old image visible if an image fails to load.
+
+Ignore xAP messages coming from the local host (need to have a way of getting
+the local host's IP address).  xAP parsing can take up a lot of CPU time.
+
+Rate limit outgoing xAP messages, with a limited initial burst?
+Optimize xAP parser/use a hard-coded parser and generator?
+
+Minify/obfuscate .js before copying to device.
+
+When dragging to create a zone on the perspective view, make the zmin/zmax
+based on the range of pixels from the depth image.  Use depth histogram within
+the selected region to determine distance (e.g. zmin/zmax = 20th/80th
+percentiles, or maybe median value +/- one standard deviation).
+
+Allow creation of zones without the use of a GUI to specify zone locations.
+Audio or visual cues could instruct the user to walk around the boundary of a
+zone, or to specify the location of a particular corner with his/her hand (would
+require actual hand tracking).  Alternatively, the system could monitor movement
+for some time, and suggest zones based on the most common locations of movement.
+
+Generate movement heatmaps, possibly allowing alerts when activity deviates
+from the heatmap.
+
+Consider studying the art gallery problem for determining sensor placement:
+http://news.ycombinator.com/item?id=2549032 (links to wikipedia).
+
+Merge device settings pages from logic and depth webapps, place them in a
+central location (maybe as CGI scripts on the base web server, or under a
+shared directory that is pulled in by all webapps).
+
+Change the depth webapp theme to match the logic status page.
+
+Merge multiple cameras into a single 3D space in the WebGL view.  Camera
+alignment could be manual at first -- allow users to drag and rotate cameras
+around.  Open question: which controller(s) handle rotation of the data/zones
+and merging that information, or would it only be a visualization tool, with
+each camera still having separate zone definitions (the WebGL software could
+duplicate zone definitions across all cameras that can see the zone)?
+
+Shadowed zone detection: when using a bitmap-based zone map, sort zones by
+their px_zmin.  Then, for each bit set in a given pixel, if the pixel's z value
+is less than the zone's px_zmin, increment a zone shadow counter.  After the
+pixel counting loop has finished, iterate through each zone and set a shadowed
+flag if the shadow counter exceeds some absolute or percentage threshold.  Make
+both values available as attributes.
+
+Image segmentation idea: for each pixel, compare it to its neighbors.  If the
+neighbors are within some range of the pixel, consider them connected and
+assign them the same ID (store the segment ID in an image-sized array).  If a
+pixel is found that should be connected to its neighbors but has a different
+ID, mark those IDs as connected and merge them in a post-processing pass.
+
+Possibly use libinsighttoolkit for depth+video registration and segmentation?
+
+Composite zones: add the ability to create additive and subtractive subzones
+attached to a main zone.  This will require commands to manipulate subzones
+(e.g. make zone B a subzone of zone A, remove zone B as a subzone, etc.)  To
+keep things simple, process all additive zones first, then subtractive zones.
+The web UI could be changed to show a tree view of zones, with drag and drop
+allowing the assignment of subzones.
+
+3D grids on future 3D views.  Draw grid planes on all sides of the data, so
+that at least three planes are always visible.  When the camera is forced to an
+overhead/side/front view (possibly orthogonal instead of perspective), a single
+grid will become perfectly aligned with the view.  Or, come up with an even
+cooler way of showing a grid.
+
+Add graphing of zone attributes over time. Flotr2 looks good and fast.
+
+Add links to zone info and coordinates displayed in the event log (show a
+(flashing?) crosshair or other marker at the coordinates clicked from the event
+log).  Possibly allow showing multiple coordinate-bearing events at once (e.g.
+showing each point at which a zone was entered or exited).
+
+Graph CoG over time on the zone views.
+
+Create knd-side triggers that store the exact depth or video frame that
+triggered an event.
+
+Create a timeline (horizontal, vertical, or both) version of the event log.
+Possible vertical example (timeline is red during camera offline intervals,
+normal/white during online intervals):
+     Zone A exited (5s ago)---------\|----------- Zone B entered (5s ago)
+                                    ||
+                                    ||
+                                    \|----------- Zone A entered (20s ago)
+                                     |
+                                     |
+                                     |
+                                     |
+                                     |----------- Camera online (4m50s ago)
+     Camera offline (5m ago)---------|
+                                     .
+                                     .
+                                     .
+
+Add a Zone Editor page that shows all the zones in a table, allowing each zone
+parameter to be edited by hand.
+
+Add a substatus or similar command to knd that reports FPS, video grab start/stop,
+and depth grab start/stop.  This is to allow automation systems to trigger
+events when someone is accessing the video or depth images.
+
+Add IR image grabbing support.
+
+Fix infinite loop when reading format 4 zones.knd replaced with format 3.
+
+Show graph and/or meter of rising/falling count vs. rising/falling delay, and
+param value vs. param range and thresholds.  Probably on Zones page.
+
+Print all threads' stack traces when watchdog times out?  See commit
+5b9fb1144c30b0d7392460268155449ac3fa932f in knd for details about
+setzone-related watchdog issue.
+
+Fix zone row updates stopping when a /zones tab is dragged to a new window in Firefox:
+http://stackoverflow.com/questions/20529114/is-there-a-way-to-preserve-settimeout-and-setinterval-timers-when-dragging-a
+
+Implement zone renaming from the /zones page.
+
+Somehow show zones visually on /zones page (Switchable 2D views?  Small 3D view?)
+
+Allow setting the default hostname by leaving the hostname field blank on /settings.
+
+Enable level-based (continuous) triggering of Occupied triggers in Automation Rules.
+
+Add bulb reachability to the Hue UI and add a trigger for Hue bulb reachability.
+
+Remove debugging messages from recent event log changes.
+
+Add group creation and deletion support to the Hue UI.
+
+Add bulb renaming to the Hue UI.
+
+Add a checkbox to Zone-based Automation rules to optionally require zone occupation, somehow.
+
+Show "Scanning" instead of "No hue bridges found" when scanning is in progress (at least the first time).
+
+This is a long-standing idea, but I'm adding it now due to being reminded by an
+HN post: some day, use computer vision techniques to recognize furniture,
+lighting fixtures, etc. within a room and set up background removal, zones,
+etc. automatically, both initially and in response to changes over time.  The
+missing link: https://news.ycombinator.com/item?id=7480380
+
+Add support for schedules, scenes, rules, sensors?
+
+Research this "Delaunay triangulation" for converting point clouds to geometry: https://news.ycombinator.com/item?id=9435698

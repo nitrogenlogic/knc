@@ -1,0 +1,421 @@
+@charset "UTF-8";
+/*
+ * Styles for Depth Camera Controller Setup web interface.
+ * (C)2011 Mike Bourgeous
+ */
+
+/* TODO: Optimize, minify, categorize, etc. */
+html {
+	background: #111;
+}
+body {
+	-moz-border-radius: 8px;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: #282828 #141414 #141414 #282828;
+	font-family: "DejaVu Sans", "Bitstream Vera Sans", "Tahoma", sans-serif;
+	margin: 8px auto;
+	width: 854px;
+	padding: 5px;
+	color: #ddd;
+	background: #222;
+	text-shadow: 2px 2px 1px #111;
+}
+a, a:visited {
+	color: #495;
+	text-decoration: none;
+}
+a:active, a:hover {
+	color: #7d8;
+}
+.zonewrap {
+	top: 0;
+	position: absolute;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	width: 640px;
+	height: 480px;
+}
+.vis_perspective {
+	position: relative;
+	background-repeat: no-repeat;
+	width: 640px;
+	height: 480px;
+}
+.vis_overhead {
+	position: relative;
+	background-position: center;
+	background-repeat: no-repeat;
+	width: 640px;
+	height: 480px;
+}
+.vis_side {
+	position: relative;
+	background-position: center;
+	background-repeat: no-repeat;
+	width: 640px;
+	height: 480px;
+}
+.vis_front {
+	position: relative;
+	background-position: center;
+	background-repeat: no-repeat;
+	width: 640px;
+	height: 480px;
+}
+.vis_overhead .zonewrap, .vis_side .zonewrap, .vis_front .zonewrap {
+	left: 70px;
+	width: 500px;
+	border-left: solid 1px #777;
+	border-right: solid 1px #777;
+}
+.zone {
+	position: absolute;
+	white-space: nowrap;
+	margin: 0;
+	padding: 0;
+	color: #fff;
+	text-shadow: 2px 2px 1px black;
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-ms-box-sizing: border-box;
+	-o-box-sizing: border-box;
+	opacity: 0.8;
+	background: #25a;
+	border: solid 1px #14f;
+	text-align: center;
+	overflow: hidden;
+}
+.zone_proxy {
+	position: absolute;
+	white-space: nowrap;
+	margin: 0;
+	padding: 0;
+	color: #fff;
+	text-shadow: 2px 2px 1px black;
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-ms-box-sizing: border-box;
+	-o-box-sizing: border-box;
+	opacity: 0.8;
+	background: #25a;
+	border: dashed 2px #fff !important;
+	text-align: center;
+	overflow: hidden;
+	z-index: 25000;
+	min-width: 16px;
+	min-height: 16px;
+}
+
+/* Colors for overlay zones */
+.zone.occupied {
+	color: #2f3;
+}
+.zone.c1, .zone_proxy.c1 {
+	background-color: #2040c0;
+	border-color: #3060ff;
+}
+.zone.c2, .zone_proxy.c2 {
+	background-color: #60c070;
+	border-color: #10ff66;
+}
+.zone.c3, .zone_proxy.c3 {
+	background-color: #c95;
+	border-color: #eb8;
+}
+.zone.c4, .zone_proxy.c4 {
+	background-color: #80101c;
+	border-color: #c0101c;
+}
+
+.zone:hover {
+	border: dashed 1px white;
+	background-image: url('images/zonestripe.png');
+	background-position: center;
+}
+.zone span {
+	cursor: default;
+}
+
+/* Center-of-gravity position within a zone */
+.cog {
+	width: 3px;
+	height: 3px;
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	border: 2px solid #f0f;
+	background: #ff0;
+	-moz-border-radius: 4px;
+	-o-border-radius: 4px;
+	-webkit-border-radius: 4px;
+	-ms-border-radius: 4px;
+	border-radius: 4px;
+	-moz-box-shadow: 0 0 2px 2px black;
+	-webkit-box-shadow: 0 0 2px 2px black;
+	box-shadow: 0 0 2px 1px white;
+	visibility: hidden;
+}
+.occupied .cog {
+	visibility: inherit;
+}
+
+.title {
+	font-size: 22px;
+	margin: 0 7px 7px;
+	text-align: center;
+	font-weight: bold;
+}
+.subtitle {
+	font-size: 15px;
+	margin: 7px;
+	text-align: center;
+}
+.online {
+	color: #9f9;
+	display: none;
+}
+.fps {
+	display: none;
+}
+.offline {
+	color: #e23;
+}
+.copyright {
+	margin-top: 7px;
+	font-size: 11px;
+	text-align: center;
+}
+ul {
+	margin: 0;
+}
+#zonelisttabs {
+	float: left;
+	font-size: 12px;
+	padding: 0;
+}
+#zonelist_help {
+	color: #bbb;
+	font-size: 12px;
+	font-style: italic;
+	white-space: wrap;
+	text-align: center;
+	max-width: 198px;
+	padding: 2px;
+	margin: 10px 0 0;
+}
+.zonelist_help p {
+	margin: 0 1px 10px;
+	padding: 0;
+}
+#zonelist {
+	width: 200px;
+	height: 480px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	margin: 1px;
+	padding: 0;
+	text-shadow: 1px 1px 1px black;
+}
+#zonetabs {
+	float: left;
+	margin: 0 3px;
+	padding: 0;
+	font-size: 12px;
+}
+#zonetabs-1 {
+	width: 640px;
+	height: 480px;
+	padding: 0;
+	margin: 1px;
+}
+#zonetabs-2, #zonetabs-3, #zonetabs-4 {
+	width: 640px;
+	height: 480px;
+	padding: 0;
+	margin: 1px;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+.list_zone {
+	margin: 2px;
+	-webkit-border-radius: 7px;
+	-moz-border-radius: 7px;
+	border-radius: 7px;
+	font-size: 8px;
+}
+.list_zone table {
+	border: 0;
+	margin: 0;
+	padding: 0;
+}
+/* Colors for zone list */
+.list_zone.c1 {
+	background-color: #204080;
+	border-bottom: solid 1px #3060ff;
+	border-right: solid 1px #3060ff;
+}
+.list_zone.c2 {
+	background-color: #338050;
+	border-bottom: solid 1px #10ff66;
+	border-right: solid 1px #10ff66;
+}
+.list_zone.c3 {
+	background-color: #861;
+	border-bottom: solid 1px #eb8;
+	border-right: solid 1px #eb8;
+}
+.list_zone.c4 {
+	background-color: #500913;
+	border-bottom: solid 1px #c0101c;
+	border-right: solid 1px #c0101c;
+}
+
+.zonetitle.c1 {
+	background-color: #2040c0;
+	border-color: #3060ff;
+}
+.zonetitle.c2 {
+	background-color: #40c070;
+	border-color: #10ff66;
+}
+.zonetitle.c3 {
+	background-color: #c95;
+	border-color: #eb8;
+}
+.zonetitle.c4 {
+	background-color: #802033;
+	border-color: #c0101c;
+}
+
+.zonetitle {
+	cursor: pointer;
+	font-weight: bold;
+	display: block;
+	font-size: 11px;
+	margin: 0;
+	padding: 1px 5px;
+	-webkit-border-radius: 7px;
+	-moz-border-radius: 7px;
+	border-radius: 7px;
+	border: solid 1px #aaa;
+}
+.list_zone.occupied .zonetitle:after {
+	content: ' ●'; /* That's a Unicode en-space 0x2002, not ASCII 0x20 */
+	text-shadow: 1px 1px 2px black, -1px, -1px, 2px black;
+}
+.list_zone th {
+	font-size: 9px;
+	text-align: right;
+}
+.list_zone td {
+	text-align: left;
+	min-width: 3.9em;
+	white-space: nowrap;
+}
+.imgloader {
+	display: none;
+	visibility: hidden;
+}
+#offline-dialog {
+	display: none;
+}
+#offline-dialog .dialog_link {
+	font-size: 12px;
+	text-align: center;
+	margin: 10px 2px 2px;
+	padding: 0;
+}
+.dialog_link > a, .dialog_link > a:visited {
+	color: #495;
+	text-decoration: none;
+}
+.dialog_link > a:active, .dialog_link > a:hover {
+	color: #7d8;
+}
+#addzone-dialog {
+	display: none;
+	text-align: justify;
+}
+#addzone-dialog input#addzone_name {
+	width: 100%;
+}
+#zoneupload-dialog {
+	display: none;
+	text-align: justify;
+}
+#zone_file {
+	width: 100%;
+}
+#zoneupload-submit {
+	display: none;
+}
+body > h3 {
+	text-align: center;
+	margin-top: 2em;
+}
+body > h4 {
+	text-align: center;
+}
+.update_control {
+	text-align: center;
+	margin: 0;
+	padding: 0;
+	clear: both;
+	font-size: 9px;
+}
+.rmzone_button {
+	float: right;
+}
+a.undecorated, a.undecorated:hover, a.undecorated:active, a.undecorated:visited {
+	text-decoration: inherit;
+	color: inherit;
+	cursor: text !important;
+}
+input[type="file"] {
+	color: #ddd;
+	background: transparent;
+}
+pre {
+	background-color: #161616;
+	-moz-border-radius: 6px;
+	-webkit-border-radius: 6px;
+	border-radius: 6px;
+	border-style: solid;
+	border-width: 1px;
+	border-color: #282828 #141414 #141414 #282828;
+	padding: 4px;
+	margin: 2px 4px 2px 2px; /* Why is this necessary to center the <pre>? */
+}
+
+/* WebGL */
+#persp_canvas {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+}
+
+/* Styles for content pages (as opposed to application UI pages) */
+#content {
+	padding: 0 8px 8px;
+}
+section {
+	-moz-border-radius: 8px;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	background-color: #333;
+	padding: 6px 8px;
+	margin: 0 0 6px;
+}
+section h3 {
+	margin: 0 0 8px;
+}
+section p {
+	margin: 0 0 8px;
+}

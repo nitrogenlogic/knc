@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Event Log - Nitrogen Logic Depth Camera Controller</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link type="text/css" rel="stylesheet" href="css/main.css">
+		<link type="text/css" rel="stylesheet" href="css/log.css">
+
+		<!-- jQuery -->
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_log.js"></script>
+	</head>
+	<body id="zones_page">
+		<div id="content">
+			<div class="title">Event Log</div>
+			<div id="nav">
+				<div id="hostname">##HOSTNAME##.local</div>
+				<div class="subtitle">
+					<a href="/">Home</a> |
+					<a href="/zones">Zones</a> |
+					<a href="/rules">Rules</a> |
+					Event Log |
+					<a href="/settings">Settings</a>
+				</div>
+			</div>
+
+			<p>The Event Log shows recent system activity.</p>
+			<div class="knc_error" id="log_errors"></div>
+
+			<table id="eventlog" class="knc_table" data-idx="##LOG_INDEX##">
+				<thead>
+					<tr><th>#</th><th>Date</th><th>Source</th><th>Event</th></tr>
+				</thead>
+				<tbody>
+					##EVENT_ROWS##
+				</tbody>
+			</table>
+
+			<div class="copyright">&copy;2015 Nitrogen Logic</div>
+		</div>
+	</body>
+</html>
+

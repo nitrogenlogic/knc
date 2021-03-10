@@ -1,0 +1,161 @@
+@charset "UTF-8";
+/*
+ * Styles for the Depth Camera Controller's Rules page.
+ * (C)2013 Mike Bourgeous
+ */
+
+/* TODO: Use headers in markup instead of :before for labels */
+
+table#rules {
+	margin: 1em 0 0;
+	width: 100%;
+	border-spacing: 0 2px;
+}
+table#rules td.id {
+	color: #aaa;
+	text-align: center;
+}
+table#rules td.trigger, table#rules td.filter, table#rules td.action {
+	vertical-align: top;
+	width: 33%;
+	padding: 1px 2px 1px 3px;
+}
+table#rules td.rule_buttons {
+	text-align: center;
+	padding: 0 3px 0 0;
+}
+table#rules td.rule_buttons input {
+	margin: 0;
+	min-width: 5em;
+	width: 100%;
+}
+table#rules td.button_row {
+	text-align: center;
+	vertical-align: middle;
+}
+
+table#rules hr {
+	border: none;
+	height: 1px;
+	color: rgba(0, 0, 0, 0.2);
+	background: rgba(0, 0, 0, 0.2);
+	margin: 7px -6px 3px;
+	padding: 0;
+}
+
+table.parameters {
+	width: 100%;
+}
+table.parameters th, table.parameters td {
+	background: transparent !important;
+	border-radius: 0 !important;
+	padding: 0;
+	white-space: nowrap;
+}
+table.parameters td.param_link {
+	width: 1em !important;
+	background: blue;
+}
+table.parameters td:first-child {
+	width: 50%;
+	padding-right: 5px;
+}
+table.parameters td:last-child {
+	max-width: 5em;
+}
+
+.optional_parameters {
+	max-height: 1.2em;
+	overflow: hidden;
+	-webkit-transition: max-height 0.7s;
+	-moz-transition: max-height 0.7s;
+	-o-transition: max-height 0.7s;
+	transition: max-height 0.7s;
+}
+.optional_parameters:before {
+	display: block;
+	height: 1.2em;
+	line-height: 1.2em;
+	text-align: center;
+	content: 'Additional Parameters';
+	opacity: 0.6;
+	cursor: pointer;
+}
+.optional_parameters:hover, .optional_parameters:focus {
+	max-height: 1000px;
+	-webkit-transition: max-height 0.7s 0.2s;
+	-moz-transition: max-height 0.7s 0.2s;
+	-o-transition: max-height 0.7s 0.2s;
+	transition: max-height 0.7s 0.2s;
+}
+.optional_parameters:hover:before {
+	opacity: 0.9;
+}
+
+a.remove_parameter {
+	color: #d03035;
+}
+
+select, input[type=text], input[type=number] {
+	border: solid 1px rgba(255, 255, 255, 0.4);
+	background: rgba(0, 0, 0, 0.3);
+	border-radius: 8px;
+	padding: 2px;
+	margin: 0;
+	color: inherit;
+	width: 100%;
+}
+input[type="number"] {
+	text-align: right;
+}
+form {
+	margin: 0;
+}
+
+.insetbox {
+	/* TODO: Bring in the box tools from the Automation Controller web interface? */
+	padding: 4px 8px 6px;
+	margin: 2px 0;
+	border-radius: 6px;
+	box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.7) inset, -1px -1px 3px rgba(45, 45, 45, 0.5) inset;
+	border-bottom: solid 1px #4a4a4a;
+	border-right: solid 1px #4a4a4a;
+	overflow: hidden;
+}
+.insetbox:before {
+	/* TODO: Use a header tag instead */
+	display: block;
+	text-align: center;
+	background: rgba(0, 0, 0, 0.3);
+	margin: -4px -8px 4px;
+	padding: 4px 0 2px;
+	border-top-left-radius: 6px;
+	border-top-right-radius: 6px;
+	box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+}
+div.trigger {
+	background: #363248;
+}
+div.trigger:before {
+	content: 'Trigger';
+}
+div.condition {
+	background: #263444;
+}
+div.condition:before {
+	content: 'Condition';
+}
+div.true_action {
+	background: #254625;
+}
+div.true_action:before {
+	content: 'True Action';
+}
+div.false_action {
+	background: #422;
+}
+div.false_action:before {
+	display: block;
+	text-align: center;
+	content: 'False Action';
+}

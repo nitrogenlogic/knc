@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Settings - Nitrogen Logic Depth Camera Controller</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link type="text/css" rel="stylesheet" href="css/main.css">
+		<link type="text/css" rel="stylesheet" href="css/settings.css">
+
+		<!-- jQuery -->
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_common.js"></script>
+		<script type="text/javascript" src="js/knc_settings.js"></script>
+		<script type="text/javascript" src="js/knc_hue.js"></script>
+	</head>
+	<body>
+		<div id="content">
+			<div class="title">Depth Camera Controller Settings</div>
+			<div id="nav">
+				<div id="hostname">##HOSTNAME##.local</div>
+				<div class="subtitle">
+					<a href="/">Home</a> |
+					<a href="/zones">Zones</a> |
+					<a href="/rules">Rules</a> |
+					<a href="/log">Event Log</a> |
+					Settings
+				</div>
+			</div>
+
+			<section>
+			<h3>Firmware Update</h3>
+			<p>Select a Nitrogen Logic firmware file with the .nlfw extension.</p>
+			<form method="POST" action="firmware" charset="utf-8" enctype="multipart/form-data">
+				<input type="file" name="firmware_file"></input>
+				<input type="submit" name="submit" value="Upload Firmware"></input>
+			</form>
+			<span class="aside">Current version: ##BUILDNO##</span>
+			<span class="aside"><a href="http://www.nitrogenlogic.com/updates"
+					title="Check for firmware updates.  Note that this may reveal your controller's host name to Nitrogen Logic.">Check for updates</a></span>
+			</section>
+
+			<section>
+			<h3>Host Name</h3>
+			<form method="POST" action="hostname" charset="utf-8">
+				<input type="text" name="hostname" value="##HOSTNAME##"></input>.local
+				<input type="submit" name="submit" value="Set Hostname"></input>
+				<!-- TODO: Update input with AJAX/JSON, display link (or
+				automatically change URL) when hostname is changed elsewhere -->
+			</form>
+			</section>
+
+			<section>
+			<h3>Zone Brightness</h3>
+			<p>The brightness of the light in each zone can be obtained using the
+			color video camera of some depth cameras.  This interval controls how
+			often brightness data is updated in xAP and in the web interface.</p>
+			<form method="POST" action="/settings/brightness" id="bright_form">
+				<div class="col1"><input type="text" id="bright_rate" name="rate"
+					value="##BRIGHT_RATE##"
+					data-orig="##BRIGHT_RATE##" maxlength="5" size="5"></input></div>
+				<div class="col2">
+					<label for="bright_rate">Update interval</label>
+					<span class="aside">
+						Time between updates, in milliseconds (minimum 1000, default 1000).
+					</span>
+				</div>
+				<br>
+
+				<div class="submit_div">
+					<input type="submit" id="bright_submit" name="submit" value="Apply Brightness Settings">
+				</div>
+				<div class="knc_error" id="bright_errors"></div>
+			</form>
+			</section>
+
+			<section>
+			<h3>xAP Protocol</h3>
+			<p>xAP is a protocol that allows different automation systems to work together.
+			The Depth Camera Controller can report whether zones are occupied using the xAP
+			Basic Status and Control schema.</p>
+			<form method="POST" action="/settings/xap" id="xap_form">
+				<div class="col1"><input type="checkbox" id="xap_enabled" name="enabled"
+					value="true" ##XAP_ENABLED##></input></div>
+				<div class="col2">
+					<label for="xap_enabled">Enable xAP</label>
+					<span class="aside jshide" id="xap_aside">
+						xAP will be enabled or disabled as soon as this
+						box is checked.
+					</span>
+				</div>
+				<br>
+
+				<div class="col1"><input type="text" id="xap_uid" name="uid" value="##XAP_UID##"
+					data-orig="##XAP_UID##" maxlength="4" size="4"></input></div>
+				<div class="col2">
+					<label for="xap_uid">Device UID</label>
+					<span class="aside">
+						Four hex digits, each pair in the range 01 to FE.
+						Enter "rand" to assign a random UID.
+					</span>
+				</div>
+				<br>
+
+				<div class="submit_div">
+					<input type="submit" id="xap_submit" name="submit" value="Apply xAP Settings">
+				</div>
+				<div class="knc_error" id="xap_errors"></div>
+			</form>
+
+			<div id="xap_endpoints" class="subsection jshide">
+				<h4>xAP Endpoints</h4>
+				<p>This list shows the xAP address, endpoint ID, and state value for each
+				zone, as well as the special __Status endpoint.</p>
+				<table id="xap_endpoints_table" class="subsection_table knc_table">
+					<thead>
+						<tr>
+							<th id="xap_ep_name">Endpoint Address</th>
+							<th id="xap_ep_uid">UID</th>
+							<th id="xap_ep_state">State</th>
+							<th id="xap_ep_level">Level</th>
+						</tr>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+			</section>
+
+			<section id="hue_support">
+			<h3>Hue Support</h3>
+			The Depth Camera Controller can interface with a Philips Hue lighting
+			system.  Register the Depth Camera Controller with one or more bridges
+			below, then assign triggers using the <a href="/rules">Rules</a> page.
+			<form method="POST" action="/settings/hue" id="hue_form" autocomplete="off">
+				<input type="hidden" name="redir" value="1"></input>
+				<input type="hidden" name="enabled" value="false"></input>
+				<div class="col1"><input type="checkbox" id="hue_enabled" name="enabled"
+					value="true" ##HUE_ENABLED##></input></div>
+				<div class="col2">
+					<label for="hue_enabled">Enable Hue support</label>
+					<span class="aside jshide" id="hue_aside">
+						Hue support will be enabled or disabled as soon
+						as this box is checked.
+					</span>
+				</div>
+				<div class="submit_div">
+					<input type="submit" id="hue_submit" name="submit" value="Apply Hue Settings">
+				</div>
+			</form>
+
+			<div id="hue_bridges" class="subsection">
+				<h4>Bridges</h4>
+				<table id="hue_bridges_table" class="subsection_table knc_table">
+					<thead>
+						<tr>
+							<th class="hue_bridge_name">Name</th>
+							<th class="hue_bridge_addr">Address</th>
+							<th class="hue_bridge_serial">Serial</th>
+							<th class="hue_bridge_lights">Lights</th>
+							<th class="hue_discovery">
+								##HUE_DISCO##
+							</th>
+						</tr>
+					</thead>
+					<tbody class="hue_bridge_message">
+						<tr><td colspan="5">No Hue bridges found.</td></tr>
+					</tbody>
+
+					##HUE_BRIDGES##
+				</table>
+			</div>
+			<div class="knc_error" id="hue_errors"></div>
+			<div class="copyright">Note: Hue support on Nitrogen Logic controllers is not supported
+				by or affiliated with Philips or its distributors.</div>
+			</section>
+
+			<section>
+			<h3>Prepare for Transport</h3>
+			<p>Click the Shut Down button below to prepare the device for transport.</p>
+			<p>The device may be unplugged when its blue LED stops flashing.  If the device
+			is not unplugged within a short time, it will automatically reboot.</p>
+			<div style="text-align: center;"><form method="POST" action="/shutdown" charset="utf-8">
+					<input type="submit" name="submit" value="Shut Down"></input>
+			</form></div>
+			</section>
+			<div class="copyright">&copy;2015 Nitrogen Logic</div>
+		</div>
+	</body>
+</html>

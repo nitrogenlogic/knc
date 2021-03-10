@@ -1,0 +1,430 @@
+@charset "UTF-8";
+/*
+ * Styles for Depth Camera Controller settings page.
+ * (C)2013 Mike Bourgeous
+ */
+
+input, button {
+	background: rgba(0, 0, 0, 0.2);
+	border: solid 1px transparent;
+	margin: 2px;
+	border-radius: 4px;
+	color: #fff;
+	padding: 3px 5px;
+	box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4) inset, 1px 1px 3px -1px #555;
+}
+input[type="file"] {
+	/* Workaround for Firefox not using background of file inputs */
+	border: 0;
+}
+input:focus, button:focus {
+	border: solid 1px #494949;
+}
+input:disabled, input[type="text"]:disabled {
+	color: #555;
+	opacity: 0.8;
+}
+input[type="submit"], input[type="button"], button {
+	background: #363636;
+	border-radius: 6px;
+	border-left: 0;
+	border-top: 0;
+	border-right: solid 1px transparent;
+	border-bottom: solid 1px transparent;
+	box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4), 2px 2px 2px -2px #585858 inset;
+	vertical-align: middle;
+}
+input[type="submit"]:active, input[type="button"]:active, button:active {
+	color: #ccc;
+	border-left: solid 1px transparent;
+	border-top: solid 1px transparent;
+	border-right: 0;
+	border-bottom: 0;
+	box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3), 2px 2px 2px -2px #585858 inset;
+}
+input[type="submit"]:disabled, input[type="button"]:disabled, button:disabled {
+	color: #888;
+	border-left: 0;
+	border-top: 0;
+	border-right: solid 1px transparent;
+	border-bottom: solid 1px transparent;
+	box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4), 2px 2px 2px -2px #585858 inset;
+}
+
+.submit_div {
+	text-align: center;
+	margin-top: 8px;
+}
+
+.col1 {
+	display: inline-block;
+	text-align: right;
+	width: 56px;
+	margin: 4px 8px 0 0;
+}
+.col1 input[type="text"] {
+	width: 100%;
+}
+
+.col2 {
+	text-align: left;
+	display: inline-block;
+	min-width: 6em;
+	margin: 4px 0 0 8px;
+}
+
+.aside {
+	font-size: 80%;
+	font-style: italic;
+	margin: 0 5px;
+	color: #bbb;
+}
+
+.subsection:before {
+	width: 95%;
+	border-bottom: solid 1px #888;
+	box-shadow: 1px 1px 2px #111;
+	content: ' ';
+	display: block;
+	margin: 0 auto 4px;
+	padding: 0;
+}
+.subsection {
+	margin: 8px auto 0;
+}
+.subsection h4 {
+	margin: 0 0 8px;
+}
+
+.xap_addr_prefix {
+	color: #888;
+	font-style: italic;
+	margin-right: 3px;
+}
+
+.subsection_table {
+	margin: 0 auto;
+	border-collapse: collapse;
+}
+.subsection_table th, .subsection_table td {
+	background: #222 !important;
+	padding: 3px 8px;
+	text-align: center;
+	border: solid 2px #333;
+}
+.subsection_table td:first-child, .subsection_table th:first-child {
+	border-left: none;
+}
+.subsection_table td:last-child, .subsection_table th:last-child {
+	border-right: none;
+}
+.subsection_table > tbody > tr:last-child > td {
+	border-bottom: none;
+}
+.subsection_table > thead > tr:first-child > th {
+	border-top: none;
+}
+.subsection_table > thead > tr:first-child > th:first-child {
+	border-bottom-left-radius: 0;
+}
+.subsection_table > thead > tr:first-child > th:last-child {
+	border-bottom-right-radius: 0;
+}
+.subsection_table > tbody > tr:first-child > td:first-child {
+	border-top-left-radius: 0;
+}
+.subsection_table > tbody > tr:first-child > td:last-child {
+	border-top-right-radius: 0;
+}
+
+#xap_endpoints_table td:first-child {
+	text-align: left;
+}
+#xap_ep_name {
+	min-width: 20em;
+}
+#xap_ep_uid {
+	width: 3.8em;
+}
+#xap_ep_state {
+	width: 3.8em;
+}
+#xap_ep_level {
+	min-width: 5em;
+}
+
+#hue_support table {
+	width: 95%;
+}
+
+#hue_errors {
+	margin-top: 8px;
+}
+
+.hue_bridge_message {
+	text-align: center !important;
+	font-style: italic;
+	display: none;
+}
+.hue_bridge_message:last-child {
+	display: table-row-group;
+}
+
+.hue_discovery, .hue_scan_active, .hue_scan_inactive {
+	font-weight: normal;
+	white-space: nowrap;
+	width: 9em;
+	font-size: 13px;
+	line-height: 21px;
+	color: #888;
+}
+.hue_discovery a, a.hue_scan_link {
+	font-style: normal;
+	color: inherit;
+}
+.hue_discovery a:hover, .hue_discovery a:active,
+a.hue_scan_link:hover, a.hue_scan_link:active {
+	color: #7d8;
+}
+.hue_discovery img {
+	padding: 0;
+	border: 0;
+	margin: 3px 0 0;
+	vertical-align: top;
+}
+.hue_disco_running, .hue_scan_active {
+	font-style: italic;
+}
+
+.hue_bridge_name {
+	min-width: 10em;
+}
+.hue_bridge_name > div {
+	position: relative;
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+.hue_bridge_name > div div.hue_bridge_name_icons {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+}
+.hue_bridge_addr {
+	width: 8em;
+}
+.hue_bridge_serial {
+	width: 8em;
+}
+.hue_bridge_lights {
+	width: 3.8em;
+}
+tr.hue_bridge_row[data-registered="true"] td.hue_bridge_lights {
+	cursor: pointer;
+}
+.hue_bridge_action {
+	min-width: 4em;
+}
+
+
+.hue_bridge_row:not([data-update-error="true"]) img.warning_icon {
+	display: none;
+}
+.hue_bridge_row:not([data-disco-timeout="true"]) img.timeout_icon {
+	display: none;
+}
+
+.hue_bridge_row[data-registered="true"] .hue_register_link {
+	display: none;
+}
+.hue_bridge_row:not([data-registered="true"]) .hue_unregister_link {
+	display: none;
+}
+
+.hue_bridge_row[data-scan-active="true"] ~ tr div.hue_scan_active,
+.hue_bridge_row:not([data-scan-active="true"]) ~ tr div.hue_scan_inactive {
+	display: inline-block;
+	width: auto;
+}
+.hue_bridge_row[data-scan-active="true"] ~ tr div.hue_scan_inactive,
+.hue_bridge_row:not([data-scan-active="true"]) ~ tr div.hue_scan_active {
+	display: none;
+}
+
+.hue_scan_active a.hue_scan_link, .hue_scan_inactive a.hue_scan_link {
+	border-bottom: none;
+}
+.hue_scan_active a.hue_scan_link {
+	margin-left: 15px;
+}
+.hue_scan_active .loading_icon {
+	margin: 3px 4px 0 0;
+}
+
+tr.hue_bridge_row.detail_visible > td {
+	border-bottom-width: 1px !important;
+}
+tbody:last-child > tr.hue_bridge_row:not(.detail_visible) > td:first-child {
+	border-bottom-left-radius: 9px;
+}
+tbody:last-child > tr.hue_bridge_row:not(.detail_visible) > td:last-child {
+	border-bottom-right-radius: 9px;
+}
+tr.hue_bridge_detail > td {
+	text-align: left;
+	padding: 2px;
+	border-top: none !important;
+}
+tr.hue_bridge_detail h5 {
+	font-weight: bold;
+	font-size: 14px;
+	margin: 8px 4px 4px;
+}
+tr.hue_bridge_detail h5:first-child {
+	margin-top: 3px;
+	display: inline-block;
+	margin-right: 15px;
+}
+
+.hue_bridge_detail table a, .hue_bridge_detail table a:visited {
+	color: #bbb;
+	border-bottom: dotted 1px;
+}
+.hue_bridge_detail table a:hover, .hue_bridge_detail table a:active {
+	color: #eee;
+}
+
+table.hue.subsection_table {
+	width: 100% !important;
+}
+table.hue.subsection_table th, table.hue.subsection_table td {
+	background: #2a2a2a !important;
+	border-radius: 0 !important;
+	border-color: #222;
+}
+#hue_bridges_table {
+	overflow: hidden;
+}
+#hue_bridges_table > :last-child td table.hue.subsection_table:last-child > tbody > tr:last-child > td:first-child {
+	border-bottom-left-radius: 7px !important;
+}
+#hue_bridges_table > :last-child td table.hue.subsection_table:last-child > tbody > tr:last-child > td:last-child {
+	border-bottom-right-radius: 7px !important;
+}
+
+td.hue_light_id {
+	width: 1.5em;
+	cursor: pointer;
+}
+td.hue_light_name {
+	min-width: 8.5em;
+}
+td.hue_light_on {
+	width: 2.2em;
+}
+
+td.hue_light_name {
+	cursor: pointer;
+	white-space: nowrap;
+}
+td.hue_light_on > a {
+	text-shadow: 2px 2px 1px #111, 0 0 2px #111;
+	color: #ddd;
+}
+td.hue_light_on[data-on="false"] > a, td.hue_light_on[data-on="false"] > a:visited {
+	color: #777;
+}
+td.hue_light_on[data-on="false"] > a:hover, td.hue_light_on[data-on="false"] > a:active {
+	color: #888;
+}
+td.hue_light_on[data-on="true"] > a:hover, td.hue_light_on[data-on="true"] > a:active {
+	color: #bbb;
+}
+
+td.hue_light_bri .TKAdjustableNumber {
+	color: inherit;
+	border-color: #ddd;
+}
+td.hue_light_bri .TKAdjustableNumberHelp {
+	color: #ccf;
+	background: rgba(0, 0, 0, 0.75);
+	padding: 1px 3px;
+	border-radius: 3px;
+}
+
+tr.hue_light_row > td {
+	opacity: 0.4;
+}
+tr.hue_light_row > td.hue_light_id,
+tr.hue_light_row > td.hue_light_name,
+tr.hue_light_row > td.hue_light_on,
+tr.hue_light_row > td.hue_light_bri,
+tr.hue_light_row > td.hue_light_preset,
+tr.hue_light_row[data-colormode="ct"] > td.hue_light_ct,
+tr.hue_light_row[data-colormode="xy"] > td.hue_light_x,
+tr.hue_light_row[data-colormode="xy"] > td.hue_light_y,
+tr.hue_light_row[data-colormode="hs"] > td.hue_light_hue,
+tr.hue_light_row[data-colormode="hs"] > td.hue_light_sat
+{
+	opacity: 1.0 !important;
+}
+
+td.hue_light_bri, td.hue_light_ct, td.hue_light_sat {
+	min-width: 3.0em;
+}
+td.hue_light_hue {
+	min-width: 3.9em;
+}
+td.hue_light_x, td.hue_light_y {
+	min-width: 5em;
+}
+
+tr.hue_group_row, tr.hue_scene_row {
+	cursor: pointer;
+}
+tr.hue_group_row.disabled, tr.hue_scene_row.disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+td.hue_group_id, td.hue_scene_id {
+	width: 1.5em;
+	white-space: nowrap;
+}
+
+td.hue_group_delete, td.hue_scene_delete {
+	text-decoration: underline;
+	width: 4.5em;
+}
+tr.disabled > td.hue_group_delete:hover, tr.disabled > td.hue_scene_delete:hover {
+	text-decoration: none;
+	color: inherit;
+}
+td.hue_group_delete:hover, td.hue_scene_delete:hover {
+	color: #7d8;
+}
+
+table.hue.subsection_table input {
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	font-size: inherit;
+	font-family: inherit;
+	text-align: center;
+}
+table.hue.subsection_table input[type="submit"] {
+	/* Chrome ignores submit buttons set to display: none, so hide it using position */
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	left: -10000px;
+}
+
+.jshide {
+	/* Hidden by default, made visible by JavaScript */
+	display: none;
+}

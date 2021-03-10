@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Kinect WebGL Point Cloud Test</title>
+		<style type="text/css">
+			body {
+				background: #8af;
+				color: #ccc;
+				font-size: 12px;
+				font-family: sans-serif;
+				padding: 0;
+				margin: 0;
+				text-align: center;
+			}
+			body > p {
+				margin: 8px;
+				display: inline-block;
+				width: 200px;
+				text-align: center;
+			}
+			#glcanvas {
+				position: fixed;
+				top: 0;
+				left: 0;
+				pointer-events: none;
+				width: 100%;
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				border: 0;
+			}
+			#legend {
+				cursor: default;
+				position: fixed;
+				top: 0;
+				left: 0;
+				border: solid 1px #ccc;
+				border-radius: 8px;
+				background: #111;
+				padding: 4px 8px;
+				margin: 4px;
+				opacity: 0.95;
+				background-color: rgba(16, 16, 16, 0.85);
+				text-align: left;
+				text-shadow: 0 0 2px #000;
+			}
+		</style>
+
+		<script type="text/javascript" src="js/sylvester.src.js"></script>
+		<script type="text/javascript" src="js/glUtils.js"></script>
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+
+		<script type="text/javascript" src="js/knc_blur.js"></script>
+
+		<script type="text/javascript">
+			var zones = [];
+
+			var zoneProgram;
+			var zoneVtxAttr;
+			var zoneNormAttr;
+
+			var rectNormBuf;
+			var rectIdxBuf;
+			var rectIdxCount;
+			var rectLinesIdxBuf;
+			var rectLinesIdxCount;
+
+			var zoneColors = [
+			{ zone: [ 0x40 / 0xff, 0x60 / 0xff, 0xff / 0xff ], border: [ 0x10 / 0xff, 0x30 / 0xff, 0xff / 0xff ] },
+			{ zone: [ 0x60 / 0xff, 0xc0 / 0xff, 0x70 / 0xff ], border: [ 0x10 / 0xff, 0xff / 0xff, 0x66 / 0xff ] },
+			{ zone: [ 0xcc / 0xff, 0x99 / 0xff, 0x55 / 0xff ], border: [ 0xee / 0xff, 0xbb / 0xff, 0x88 / 0xff ] },
+			{ zone: [ 0x80 / 0xff, 0x10 / 0xff, 0x1c / 0xff ], border: [ 0xc0 / 0xff, 0x10 / 0xff, 0x1c / 0xff ] },
+			];
+
+			// Schedules a getJSON call to retrieve zones
+			var zoneTimer;
+			function getZones() {
+				clearTimeout(zoneTimer);
+				zoneTimer = setTimeout(function() {
+						$.getJSON('/zones.json', handleZones)
+						.fail(function() { zoneTimer = setTimeout(getZones, 500); })
+						}, 30);
+			}
+
+			function handleZones(data) {
+				// Delete old GL buffers
+				$.each(zones, function(zone) {
+						if(zone.vtxBuf) {
+							gl.deleteBuffer(zone.vtxBuf);
+						}
+						if(zone.cogBuf) {
+							gl.deleteBuffer(zone.cogBuf);
+						}
+				});
+				zones.length = 0;
+
+				var idx = 0;
+				$.each(data.zones, function(name, zone) {
+					zone.color = zoneColors[(idx++) % zoneColors.length];
+
+					// FIXME: Why does this require multiplication by 4/3???
+					var vtx = rect3d(4/3 * -zone.xmax, 4/3 * zone.ymin, -zone.zmin, 4/3 * -zone.xmin, 4/3 * zone.ymax, -zone.zmax);
+					zone.vtxBuf = gl.createBuffer();
+					gl.bindBuffer(gl.ARRAY_BUFFER, zone.vtxBuf);
+					gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vtx), gl.STATIC_DRAW);
+
+					// Center of gravity
+					zone.cogBuf = gl.createBuffer();
+					gl.bindBuffer(gl.ARRAY_BUFFER, zone.cogBuf);
+					gl.bufferData(
+						gl.ARRAY_BUFFER,
+						new Float32Array([
+							-zone.xc * 4/3,
+							zone.yc * 4/3,
+							-zone.zc]),
+						gl.STATIC_DRAW
+						);
+
+					zones.push(zone);
+				});
+
+				// TODO: Sort based on model-view matrix
+				zones.sort(function(a, b) { return b.zmin - a.zmin });
+
+				getZones();
+			}
+
+			function initZones() {
+				var rectIdx = rect3dIdx();
+				rectIdxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectIdxBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(rectIdx), gl.STATIC_DRAW);
+				rectIdxCount = rectIdx.length;
+
+				var rectLinesIdx = rect3dLinesIdx();
+				rectLinesIdxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectLinesIdxBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(rectLinesIdx), gl.STATIC_DRAW);
+				rectLinesIdxCount = rectLinesIdx.length;
+
+				rectNormBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectNormBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Float32Array(rect3dNorm()), gl.STATIC_DRAW);
+
+				zoneProgram = simpleProgram(gl, "zoneVtxShader", "zoneFragShader");
+				zoneVtxAttr = gl.getAttribLocation(zoneProgram, "vtxPos");
+				gl.enableVertexAttribArray(zoneVtxAttr);
+				zoneNormAttr = gl.getAttribLocation(zoneProgram, "vtxNorm");
+				gl.enableVertexAttribArray(zoneNormAttr);
+
+				if(!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+					throw "Unable to initialize the shader program.";
+				}
+
+				getZones();
+			}
+
+			function uploadZoneMatrices() {
+				gl.uniformMatrix4fv(
+						gl.getUniformLocation(zoneProgram, "uPMatrix"),
+						false,
+						new Float32Array(perspMatrix.flatten())
+						);
+				gl.uniformMatrix4fv(
+						gl.getUniformLocation(zoneProgram, "uMVMatrix"),
+						false,
+						new Float32Array(mvMatrix.flatten())
+						);
+				gl.uniformMatrix4fv(
+						gl.getUniformLocation(zoneProgram, "uCamMatrix"),
+						false,
+						new Float32Array(camMatrix.flatten())
+						);
+			}
+
+			// TODO: sort and render faces from zones into a
+			// separate texture with depth, then merge that
+			// texture with the main framebuffer
+			function drawZones() {
+				gl.useProgram(zoneProgram);
+				uploadZoneMatrices();
+
+				$.each(zones, function(idx, zone) {
+						gl.bindBuffer(gl.ARRAY_BUFFER, zone.vtxBuf);
+						gl.vertexAttribPointer(zoneVtxAttr, 3, gl.FLOAT, false, 0, 0);
+
+						gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectNormBuf);
+						gl.vertexAttribPointer(zoneNormAttr, 3, gl.FLOAT, false, 0, 0);
+
+						// Draw faces (sorting by Z would allow disabling CULL_FACE)
+						gl.enable(gl.CULL_FACE);
+						gl.enable(gl.DEPTH_TEST);
+						gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectIdxBuf);
+						var zcol = zone.color.zone.concat(zone.occupied ? 0.7 : 0.4);
+						gl.uniform4fv(gl.getUniformLocation(zoneProgram, "baseColor"), zcol);
+						gl.drawElements(gl.TRIANGLES, rectIdxCount, gl.UNSIGNED_SHORT, 0);
+
+						// Draw edges
+						gl.disable(gl.CULL_FACE);
+						gl.disable(gl.DEPTH_TEST);
+						zcol = zone.color.border.concat(0.5);
+						gl.uniform4fv(gl.getUniformLocation(zoneProgram, "baseColor"), zcol);
+						gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectLinesIdxBuf);
+						gl.drawElements(gl.LINES, rectLinesIdxCount, gl.UNSIGNED_SHORT, 0);
+
+						// Draw center of gravity (TODO: make it look better)
+						if(zone.occupied) {
+							gl.bindBuffer(gl.ARRAY_BUFFER, zone.cogBuf);
+							gl.vertexAttribPointer(zoneVtxAttr, 3, gl.FLOAT, false, 0, 0);
+							zcol = zone.color.border.concat(0.85);
+							gl.uniform4fv(gl.getUniformLocation(zoneProgram, "baseColor"), zcol);
+							gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, rectIdxBuf); // just for 0
+							gl.drawElements(gl.POINTS, 1, gl.UNSIGNED_SHORT, 0);
+						}
+						});
+			}
+		</script>
+
+		<script type="text/javascript">
+			function getShader(gl, domId) {
+				var shaderElem = document.getElementById(domId);
+
+				if(!shaderElem) {
+					throw "Shader '" + domId + "' not found in DOM.";
+				}
+
+				var shaderText = "";
+				var currentChild = shaderElem.firstChild;
+				while(currentChild) {
+					if(currentChild.nodeType == currentChild.TEXT_NODE) {
+						shaderText += currentChild.textContent;
+					}
+					currentChild = currentChild.nextSibling;
+				}
+
+				var shaderId;
+				if(shaderElem.type == "x-shader/x-fragment") {
+					console.log("Loading fragment shader from " + domId);
+					shaderId = gl.createShader(gl.FRAGMENT_SHADER);
+				} else if(shaderElem.type == "x-shader/x-vertex") {
+					console.log("Loading vertex shader from " + domId);
+					shaderId = gl.createShader(gl.VERTEX_SHADER);
+				} else {
+					throw "Invalid shader type " + shaderElem.type;
+					return null;
+				}
+
+				gl.shaderSource(shaderId, shaderText);
+				gl.compileShader(shaderId);
+				if(!gl.getShaderParameter(shaderId, gl.COMPILE_STATUS)) {
+					throw "An error occurred while compiling shader '" + domId + "': " +
+							gl.getShaderInfoLog(shaderId);
+					return null;
+				}
+
+				return shaderId;
+			}
+
+			function simpleProgram(gl, vtxShaderId, fragShaderId) {
+				var vtxShader = getShader(gl, vtxShaderId);
+				var fragShader = getShader(gl, fragShaderId);
+				var program = gl.createProgram();
+				gl.attachShader(program, vtxShader);
+				gl.attachShader(program, fragShader);
+				gl.linkProgram(program);
+				if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+					alert("Unable to initialize the shader program for " +
+							vtxShaderId + "/" + fragShaderId + ": " +
+							gl.getProgramInfoLog(program));
+				}
+				gl.useProgram(program);
+				return program;
+			}
+
+			var shaderProgram;
+			var vtxPosAttr;
+			var texCoordAttr;
+			function initShaders() {
+				shaderProgram = simpleProgram(gl, "pclVtxShader", "pclFragShader");
+
+				texCoordAttr = gl.getAttribLocation(shaderProgram, "aTexCoord");
+				console.log("texCoordAttr: " + texCoordAttr);
+				gl.enableVertexAttribArray(texCoordAttr);
+
+				vtxPosAttr = gl.getAttribLocation(shaderProgram, "aVtxPos");
+				console.log("vtxPosAttr: " + vtxPosAttr);
+				gl.enableVertexAttribArray(vtxPosAttr);
+			}
+
+			var img;
+			var imgName = document.location.search.substring(1);
+			var texFunc;
+			function initTextures() {
+				texFunc = KNC.initBlur(gl, 640, 480);
+
+				if(imgName.length == 0) {
+					imgName = "depth8.png";
+				}
+				img = new Image();
+				img.onload = function() {
+					texLoaded(img);
+					img.src = imgName + '?' + new Date().getTime();
+				}
+				img.onerror = function() {
+					setTimeout(function() {
+							img.src = imgName + '?' + new Date().getTime();
+							},
+							1000);
+				}
+				img.src = imgName;
+			}
+
+			var tex;
+			function texLoaded(img) {
+				tex = texFunc(img, blur);
+				needFrame = true;
+			}
+
+			// Returns (xdivs,ydivs) vertices across the given span on the xy plane at z=z.
+			function pointCloud(xmin, ymin, xmax, ymax, z, xdivs, ydivs) {
+				var xinc = (xmax - xmin) / xdivs;
+				var yinc = (ymax - ymin) / ydivs;
+				var x, y, xcount, ycount;
+				var points = [];
+
+				for(y = ymin, ycount = 0; ycount < ydivs; y += yinc, ycount++) {
+					for(x = xmin, xcount = 0; xcount < xdivs; x += xinc, xcount++) {
+						points.push(x, y, z);
+					}
+				}
+
+				return points;
+			}
+
+			// Returns vertex indices for displaying an xdivs by ydivs point cloud as points
+			function pointCloudPointIdx(xdivs, ydivs) {
+				var points = [];
+
+				for(var i = 0; i < xdivs * ydivs; i++) {
+					points[i] = i;
+				}
+
+				return points;
+			}
+
+			// Returns vertex indices for displaying an xdivs by ydivs point cloud as triangles
+			function pointCloudTriangleStripIdx(xdivs, ydivs) {
+				if(xdivs < 2 || ydivs < 2) {
+					throw "xdivs or ydivs are too small.";
+				}
+
+				var xcount, ycount;
+				var points = [];
+				var idx = 0;
+				var x, y;
+				for(y = 0; y < ydivs; y += 2) {
+					for(x = 0; x < xdivs; x++, idx += 2) {
+						points[idx] = x + y * xdivs;
+						points[idx + 1] = x + (y + 1) * ydivs;
+					}
+				}
+
+				return points;
+			}
+
+			// Returns vertices for the faces in a cube in the following
+			// order: front, right, top, left, bottom, back
+			function rect3d(x1, y1, z1, x2, y2, z2) {
+				return [
+					// front
+					x1, y1, z2, // 0 - bottom left front
+					x1, y2, z2, // 1 - top left front
+					x2, y2, z2, // 2 - top right front
+					x2, y1, z2, // 3 - bottom right front
+
+					// right
+					x2, y1, z2, // 3 - bottom right front
+					x2, y2, z2, // 2 - top right front
+					x2, y2, z1, // 6 - top right back
+					x2, y1, z1,  // 7 - bottom right back
+
+					// top
+					x1, y2, z2, // 1 - top left front
+					x1, y2, z1, // 5 - top left back
+					x2, y2, z1, // 6 - top right back
+					x2, y2, z2, // 2 - top right front
+
+					// left
+					x1, y1, z1, // 4 - bottom left back
+					x1, y2, z1, // 5 - top left back
+					x1, y2, z2, // 1 - top left front
+					x1, y1, z2, // 0 - bottom left front
+
+					// bottom
+					x1, y1, z1, // 4 - bottom left back
+					x1, y1, z2, // 0 - bottom left front
+					x2, y1, z2, // 3 - bottom right front
+					x2, y1, z1,  // 7 - bottom right back
+
+					// back
+					x2, y1, z1, // 7 - bottom right back
+					x2, y2, z1, // 6 - top right back
+					x1, y2, z1, // 5 - top left back
+					x1, y1, z1  // 4 - bottom left back
+						];
+			}
+
+			// Returns vertex normals for each vertex of a rect3d
+			function rect3dNorm() {
+				return [
+					// front
+					0, 0, 1,
+					0, 0, 1,
+					0, 0, 1,
+					0, 0, 1,
+
+					// right
+					1, 0, 0,
+					1, 0, 0,
+					1, 0, 0,
+					1, 0, 0,
+
+					// top
+					0, 1, 0,
+					0, 1, 0,
+					0, 1, 0,
+					0, 1, 0,
+
+					// left
+					-1, 0, 0,
+					-1, 0, 0,
+					-1, 0, 0,
+					-1, 0, 0,
+
+					// bottom
+					0, -1, 0,
+					0, -1, 0,
+					0, -1, 0,
+					0, -1, 0,
+
+					// back
+					0, 0, -1,
+					0, 0, -1,
+					0, 0, -1,
+					0, 0, -1,
+					];
+			}
+
+			// Returns vertex indices for two triangles on each
+			// face of a rect3d.  x1/y1/z2 < x2/y2/z1.
+			function rect3dIdx() {
+				// Two triangles: bl, tl, tr; bl, tr, br
+				function faceVertices(face) {
+					return [0 + face * 4, 1 + face * 4, 2 + face * 4,
+					       0 + face * 4, 2 + face * 4, 3 + face * 4];
+				}
+
+				var idx = [];
+				for(var i = 0; i < 6; i++) {
+					idx = idx.concat(faceVertices(i));
+				}
+
+				return idx;
+			}
+
+			// Returns vertex indices for lines for each face of a rect3d.
+			function rect3dLinesIdx() {
+				return [
+					0, 1, 1, 2, 2, 3, 3, 0, // front
+					4, 5, 5, 6, 6, 7, 7, 4, // right
+					8, 9, 9, 10, 10, 11, 11, 8, // top
+					12, 13, 13, 14, 14, 15, 15, 12, // left
+					16, 17, 17, 18, 18, 19, 19, 16, // bottom
+					20, 21, 21, 22, 22, 23, 23, 20, // back
+					];
+			}
+
+			var vtxBuf;
+			var idxBuf;
+			var idxCount;
+			var texCoordBuf;
+			function initBuffers() {
+				// Create/fill vertex buffer
+				var vtx = pointCloud(-4/3, -1, 4/3, 1, 0.0, 288, 216);
+				vtxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vtx), gl.STATIC_DRAW);
+
+				// Create/fill element buffer
+				var idx = pointCloudPointIdx(288, 216);
+				//var idx = pointCloudTriangleStripIdx(288, 216);
+				idxBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+				idxCount = idx.length;
+
+				// Assign texture coordinates (same for each face)
+				// TODO: Use multiple buffers to allow more particles?
+				var texCoords = [];
+				for(var i = 0; i < vtx.length; i += 3) {
+					texCoords[i * 2 / 3] = 0.5 * vtx[i] * 3 / 4 + 0.5;
+					texCoords[i * 2 / 3 + 1] = -0.5 * vtx[i + 1] + 0.5;
+				}
+				texCoordBuf = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+			}
+
+			var mvMatrix;
+			var mvStack = [];
+			var perspMatrix;
+			var camMatrix;
+
+			// Clears the model view matrix
+			function mvIdentity() {
+				mvMatrix = Matrix.I(4);
+			}
+
+			function mvMult(m) {
+				mvMatrix = mvMatrix.x(m);
+			}
+
+			function mvTranslate(v) {
+				mvMult(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
+			}
+
+			// TODO: A function that rotates the up vector to point along the given vector
+			function mvRotate(r, v) {
+				mvMult(Matrix.Rotation(r * Math.PI / 180.0, $V(v)).ensure4x4());
+			}
+
+			function uploadMatrices() {
+				var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+				gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspMatrix.flatten()));
+
+				var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+				gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+
+				gl.uniformMatrix4fv(
+						gl.getUniformLocation(shaderProgram, "uCamMatrix"),
+						false,
+						new Float32Array(camMatrix.flatten())
+						);
+			}
+
+			function mvPush(m) {
+				if(m) {
+					mvStack.push(m.dup());
+					mvMatrix = m.dup();
+				} else {
+					mvStack.push(mvMatrix.dup());
+				}
+			}
+
+			function mvPop() {
+				if(!mvStack.length) {
+					throw "Model view stack is empty.";
+				}
+
+				mvMatrix = mvStack.pop();
+				return mvMatrix;
+			}
+
+			function Vect(x, y, z) {
+				var that = this;
+				that.x = x || 0;
+				that.y = y || 0;
+				that.z = z || 0;
+			}
+			Vect.prototype = {
+				arr: function() {
+					var that = this;
+					return [that.x, that.y, that.z];
+				},
+				isZero: function() {
+					return this.x == 0.0 && this.y == 0.0 && this.z == 0;
+				}
+			};
+
+			var eye = new Vect();
+			var center = new Vect(0, 0, -2);
+			var up = new Vect(0, 1, 0);
+			var rot = new Vect();
+			var drot = new Vect();
+			var xyz = new Vect();
+			var dxyz = new Vect();
+			var lastTime = new Date().getTime();
+			var holeFill = 0;
+			var blur = true;
+			var needFrame = true;
+			function updateScene() {
+				var now = new Date().getTime();
+				var inc = now - lastTime;
+				lastTime = now;
+
+				if(!dxyz.isZero() || !drot.isZero()) {
+					needFrame = true;
+				}
+
+				xyz.x += dxyz.x * inc;
+				xyz.y += dxyz.y * inc;
+				xyz.z += dxyz.z * inc;
+
+				rot.x += drot.x * inc;
+				rot.y += drot.y * inc;
+				rot.z += drot.z * inc;
+				if(rot.x >= 360) {
+					rot.x -= 360;
+				}
+				if(rot.y >= 360) {
+					rot.y -= 360;
+				}
+				if(rot.z >= 360) {
+					rot.z -= 360;
+				}
+			}
+
+			function drawScene() {
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				gl.viewport(0, 0, canvas.width, canvas.height);
+
+				gl.enable(gl.DEPTH_TEST);
+				gl.clearColor(0.0, 0.0, 0.0, 0.0);
+				gl.clearDepth(1.0);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				gl.useProgram(shaderProgram);
+
+				perspMatrix = makePerspective(
+						56,
+						canvas.offsetWidth / canvas.offsetHeight,
+						0.1,
+						60
+						);
+
+				camMatrix = makeLookAt(
+						eye.x, eye.y, eye.z,
+						center.x, center.y, center.z,
+						up.x, up.y, up.z
+						);
+
+				mvIdentity();
+				mvPush();
+				mvTranslate(xyz.arr());
+				mvTranslate([0, 0, -2]);
+				mvRotate(rot.x, [1, 0, 0]);
+				mvRotate(rot.y, [0, 1, 0]);
+				mvRotate(rot.z, [0, 0, 1]);
+				mvTranslate([0, 0, 2]);
+				uploadMatrices();
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, vtxBuf);
+				gl.vertexAttribPointer(vtxPosAttr, 3, gl.FLOAT, false, 0, 0);
+
+				gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuf);
+				gl.vertexAttribPointer(texCoordAttr, 2, gl.FLOAT, false, 0, 0);
+
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(gl.getUniformLocation(shaderProgram, "uFragSampler"), 0);
+				gl.uniform1i(gl.getUniformLocation(shaderProgram, "uVtxSampler"), 0);
+
+				gl.uniform1i(gl.getUniformLocation(shaderProgram, "holeFill"), holeFill);
+
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+				gl.drawElements(gl.POINTS, idxCount, gl.UNSIGNED_SHORT, 0);
+
+				gl.bindTexture(gl.TEXTURE_2D, null);
+
+				drawZones();
+
+				mvPop();
+			}
+
+			var canvas;
+			var gl;
+			function startGL() {
+				canvas = document.getElementById('glcanvas');
+				canvas.width = Math.max(640, canvas.offsetWidth);
+				canvas.height = Math.max(480, canvas.offsetHeight);
+
+				gl = canvas.getContext('webgl', { antialias: false });
+				if(gl == null) {
+					console.log('No webgl context');
+					gl = canvas.getContext('experimental-webgl');
+				} else {
+					console.log('Got webgl context');
+				}
+				if(gl == null) {
+					document.body.innerHTML =
+						'<p class="glerror">It appears your browser does not support WebGL.</p>';
+					return;
+				} else {
+					console.log('Got experimental-webgl context');
+				}
+
+				if(gl.getExtension('OES_texture_float') == null) {
+					alert('OES_texture_float extension is not supported.');
+				}
+
+				initTextures();
+				initShaders();
+				initBuffers();
+
+				gl.lineWidth(1.0);
+				gl.clearDepth(1.0);
+				gl.enable(gl.BLEND);
+				gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+				gl.depthFunc(gl.LEQUAL);
+
+				var frameFunc;
+				if(window.mozRequestAnimationFrame) {
+					console.log("Using Mozilla requestAnimationFrame for timing.");
+					frameFunc = window.mozRequestAnimationFrame;
+				} else if(window.webkitRequestAnimationFrame) {
+					console.log("Using WebKit requestAnimationFrame for timing.");
+					frameFunc = window.webkitRequestAnimationFrame;
+				} else if(window.msRequestAnimationFrame) {
+					console.log("Using Microsoft requestAnimationFrame for timing.");
+					frameFunc = window.msRequestAnimationFrame;
+				} else if(window.requestAnimationFrame) {
+					console.log("Cool, using standard requestAnimationFrame for timing.");
+					frameFunc = window.requestAnimationFrame;
+				} else {
+					console.log("Using setTimeout for timing.");
+					frameFunc = function(func) {
+						setTimeout(func, 16);
+					}
+				}
+
+				var frameCallback = function() {
+						updateScene();
+						if(needFrame) {
+							drawScene();
+							needFrame = false;
+						}
+						frameFunc(frameCallback);
+				};
+				frameFunc(frameCallback);
+
+				initMouse();
+				initKeys();
+				initZones();
+			}
+
+			function initMouse() {
+				var btn = [];
+				var lastX, lastY;
+
+				document.onmousedown = function(ev) {
+					ev.preventDefault();
+					console.log('Button ' + ev.button + ' pressed.');
+					btn[ev.button] = true;
+					lastX = ev.screenX;
+					lastY = ev.screenY;
+				}
+
+				document.onmouseup = function(ev) {
+					ev.preventDefault();
+					console.log('Button ' + ev.button + ' released.');
+					btn[ev.button] = false;
+				}
+
+				document.onmousemove = function(ev) {
+					ev.preventDefault();
+					var dx = ev.screenX - lastX;
+					var dy = ev.screenY - lastY;
+					if(btn[0] && dx && dy) {
+						console.log("Drag: dx: " + dx + " dy: " + dy);
+						eye.x -= dx * 0.01;
+						eye.y += dy * 0.01;
+						// TODO: Rotate eye and up instead of translating
+						// TODO: Use camera matrix instead of model view for keyboard controls
+					}
+					lastX = ev.screenX;
+					lastY = ev.screenY;
+				}
+			}
+
+			function initKeys() {
+				var LEFT = 37;
+				var RIGHT = 39;
+				var UP = 38;
+				var DOWN = 40;
+				var PGUP = 33;
+				var PGDN = 34;
+				var END = 35;
+
+				var W = 87;
+				var S = 83;
+				var A = 65;
+				var D = 68;
+				var C = 67;
+				var SPACE = 32;
+				var HOME = 36;
+
+				var F = 70;
+				var B = 66;
+
+				var T = 84;
+
+				function getKey(ev) {
+					return ev.keyCode || ev.which; // TODO: use ev.key when supported
+				}
+
+				// TODO: Store location/rotation in a cookie or URL hash
+				document.onkeydown = function(ev) {
+					var key = getKey(ev);
+
+					// Using current key state instead of setting a flag on
+					// down/up works better for keys with opposing
+					// directions, but would require more work.
+					switch(key) {
+						// Rotation
+						case LEFT:
+							drot.y = ev.shiftKey ? -0.10 : -0.04;
+							break;
+						case RIGHT:
+							drot.y = ev.shiftKey ? 0.10 : 0.04;
+							break;
+						case UP:
+							drot.x = ev.shiftKey ? -0.10 : -0.04;
+							break;
+						case DOWN:
+							drot.x = ev.shiftKey ? 0.10 : 0.04;
+							break;
+						case PGUP:
+							drot.z = ev.shiftKey ? 0.10 : 0.04;
+							break;
+						case PGDN:
+							drot.z = ev.shiftKey ? -0.10 : -0.04;
+							break;
+						case END:
+							rot.x = 0;
+							rot.y = 0;
+							rot.z = 0;
+							eye.x = 0;
+							eye.y = 0;
+							break;
+
+						// Movement
+						case W:
+							dxyz.z = ev.shiftKey ? 0.01 : 0.002;
+							break;
+						case S:
+							dxyz.z = ev.shiftKey ? -0.01 : -0.002;
+							break;
+						case A:
+							dxyz.x = ev.shiftKey ? 0.01 : 0.002;
+							break;
+						case D:
+							dxyz.x = ev.shiftKey ? -0.01 : -0.002;
+							break;
+						case SPACE:
+							dxyz.y = ev.shiftKey ? -0.01 : -0.002;
+							break;
+						case C:
+							dxyz.y = ev.shiftKey ? 0.01 : 0.002;
+							break;
+						case HOME:
+							xyz.x = 0;
+							xyz.y = 0;
+							xyz.z = 0;
+							break;
+
+						// Hole fill/blur
+						case F:
+							holeFill = (holeFill + 1) % 2;
+							break;
+						case B:
+							blur = !blur;
+							break;
+
+						// Legend
+						case T:
+							$('#legend').animate({ opacity: 'toggle' });
+							break;
+					}
+				}
+
+				document.onkeyup = function(ev) {
+					var key = getKey(ev);
+
+					switch(key) {
+						// Rotation
+						case LEFT:
+						case RIGHT:
+							drot.y = 0;
+							break;
+						case UP:
+						case DOWN:
+							drot.x = 0;
+							break;
+						case PGUP:
+						case PGDN:
+							drot.z = 0;
+							break;
+
+						// Movement
+						case W:
+						case S:
+							dxyz.z = 0
+							break;
+						case A:
+						case D:
+							dxyz.x = 0;
+							break;
+						case SPACE:
+						case C:
+							dxyz.y = 0;
+							break;
+					}
+				}
+			}
+		</script>
+
+		<script id="zoneVtxShader" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 vtxPos;
+			attribute vec3 vtxNorm;
+
+			uniform mat4 uMVMatrix; // Model view matrix
+			uniform mat4 uPMatrix; // Projection matrix
+			uniform mat4 uCamMatrix; // Camera matrix
+
+			uniform vec4 baseColor;
+
+			varying lowp vec4 vColor;
+			varying vec3 vLighting;
+
+			void main(void)
+			{
+				gl_PointSize = 6.0;
+				gl_Position = uPMatrix * uMVMatrix * uCamMatrix * vec4(vtxPos, 1.0);
+				vColor = baseColor; // TODO: Lighting
+
+				vec3 dirColor = (vec3(0.5, 0.5, 0.5) + baseColor.rgb) * 0.5;
+				const vec3 dirVector = vec3(0.0, 0.0, -1.0);
+
+				vec4 normal = vec4(vtxNorm, 1.0) * uMVMatrix;
+				float dirValue = max(dot(normal.xyz, dirVector), 0.0);
+				vLighting = vec3(0.3) + dirColor * dirValue;
+			}
+		</script>
+
+		<script id="zoneFragShader" type="x-shader/x-fragment">
+			precision highp float;
+
+			varying lowp vec4 vColor;
+			varying vec3 vLighting;
+
+			void main(void)
+			{
+				gl_FragColor = vColor * vec4(vLighting, 1.0) + vec4(vLighting * 0.2, 0.0);
+			}
+		</script>
+
+		<script id="pclVtxShader" type="x-shader/x-vertex">
+			precision highp float;
+
+			attribute vec3 aVtxPos;
+			attribute vec2 aTexCoord;
+
+			uniform mat4 uMVMatrix; // Model view matrix
+			uniform mat4 uPMatrix; // Projection matrix
+			uniform mat4 uCamMatrix; // Camera matrix
+
+			uniform lowp int holeFill;
+			uniform lowp vec4 baseColor;
+
+			varying lowp vec4 vColor;
+			varying vec2 vTexCoord;
+			varying vec2 newTexCoord;
+			varying vec3 vLighting;
+
+			uniform sampler2D uVtxSampler;
+
+			const float zrange = 7.0;
+			const float zoffset = 0.4;
+			const float zmax = zrange + zoffset;
+
+			// Gets the distance value only at the given texture coordinate
+			float distSample(in vec2 st)
+			{
+				return (1.0 - texture2D(uVtxSampler, st)[0]) * zrange + zoffset;
+			}
+
+			// Returns the X, Y, Z point in space for the given depth image coordinate
+			// If the sample is out of range, returns vec3(0.0)
+			vec3 depthSample(inout vec2 st, in lowp int fill)
+			{
+				// zrange and zoffset are currently hard-coded in the KNC world-space plotting code
+				float distance;
+				vec2 tc = st;
+
+				distance = distSample(st);
+
+				if(fill == 1) {
+					// Diagonal search
+					// TODO: Average values found in all four diagonals/eight directions?
+					if(distance >= zmax) {
+						tc = st;
+						for(float s = 0.0; s <= 1.0; s += 1.0/640.0) {
+							tc = vec2(s + aTexCoord.s, s * 480.0 / 640.0 + aTexCoord.t);
+							distance = distSample(tc);
+							if(distance < zmax || tc.s > 1.0 || tc.t > 1.0) {
+								break;
+							}
+						}
+					}
+					if(distance >= zmax) {
+						tc = st;
+						for(float t = 0.0; t <= 1.0; t += 1.0/480.0) {
+							tc = vec2(aTexCoord.s + t * 640.0 / 480.0, aTexCoord.t - t);
+							distance = distSample(tc);
+							if(distance < zmax || tc.s > 1.0 || tc.t < 0.0) {
+								break;
+							}
+						}
+					}
+				} else if(fill == 2) {
+					// Spiral search (TODO)
+					if(distance >= zmax) {
+
+					}
+				}
+				if(distance >= zmax) {
+					return vec3(0.0);
+				}
+
+				const float tan28 = .53171;
+				float x = distance * tan28 * ((st.s - 0.5) * 8.0/3.0);
+				float y = distance * tan28 * ((st.t - 0.5) * 2.0);
+				float z = -distance;
+
+				st = tc;
+
+				return vec3(x, y, z);
+			}
+
+			void main(void)
+			{
+				vec2 tc = aTexCoord;
+				vec3 xyz = depthSample(tc, holeFill);
+
+				vTexCoord = aTexCoord;
+
+				if(xyz == vec3(0.0)) {
+					gl_PointSize = 0.0;
+					// using aVtxPos to make sure the attribute doesn't get optimized away
+					gl_Position = vec4(0.1) * vec4(aVtxPos, 0.0) + vec4(0.0, 0.0, 100.0, 1.0);
+					vLighting = vec3(0.0, 0.0, 0.0);
+					vColor = vec4(1.0, 1.0, 1.0, 0.0);
+					return;
+				}
+
+				gl_PointSize = 3.0;
+				gl_Position = uPMatrix * uMVMatrix * uCamMatrix * vec4(xyz, 1.0);
+
+				newTexCoord = tc;
+				vColor = vec4(vec3(1.0 - (-xyz.z - 0.4) / 7.0), 1.0);
+
+				const vec3 ambientColor = vec3(0.4, 0.4, 0.4);
+				const vec3 dirColor = vec3(0.5, 0.5, 0.5);
+				const vec3 dirVector = vec3(-1.0, 1.0, 1.0);
+
+				// Compute lighting normal from image data
+				vec3 xSample, ySample, xTangent, yTangent;
+				tc = vec2(aTexCoord.s + 3.0 / 640.0, aTexCoord.t);
+				xSample = depthSample(tc, holeFill);
+				tc = vec2(aTexCoord.s, aTexCoord.t + 3.0 / 480.0);
+				ySample = depthSample(tc, holeFill);
+
+				if(xSample == vec3(0.0)) {
+					xTangent = vec3(1.0, 0.0, 0.0);
+				} else {
+					xTangent = normalize(xSample - xyz);
+				}
+				if(ySample == vec3(0.0)) {
+					yTangent = vec3(0.0, 1.0, 0.0);
+				} else {
+					yTangent = normalize(xyz - ySample);
+				}
+
+				vec4 normal = vec4(cross(yTangent, xTangent), 1.0) * uMVMatrix;
+				float dirValue = max(dot(normal.xyz, dirVector), 0.0);
+				vLighting = ambientColor + dirColor * dirValue;
+			}
+		</script>
+
+		<script id="pclFragShader" type="x-shader/x-fragment">
+			precision highp float;
+			varying lowp vec4 vColor;
+			varying highp vec2 vTexCoord;
+			varying highp vec2 newTexCoord;
+			varying highp vec3 vLighting;
+
+			uniform sampler2D uFragSampler;
+
+			void main(void) {
+				gl_FragColor = //texture2D(uFragSampler, vTexCoord.st) *
+					vColor *
+					vec4(vLighting, 1.0);
+			}
+		</script>
+
+	</head>
+	<body onload="startGL();">
+		<canvas id="glcanvas">No canvas support.</canvas>
+		<div id="legend">
+			W - forward<br>
+			S - backward<br>
+			A - left<br>
+			D - right<br>
+			Space - up<br>
+			C - down<br>
+			Home - center<br>
+			<br>
+			Up - look up<br>
+			Down - look down<br>
+			Left - turn left<br>
+			Right - turn right<br>
+			Pg Up - roll left<br>
+			Pg Dn - roll right<br>
+			End - reset view<br>
+			<br>
+			F - toggle filling<br>
+			B - toggle blur<br>
+			T - toggle legend
+		</div>
+	</body>
+</html>

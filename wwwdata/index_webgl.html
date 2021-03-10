@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Depth Camera Controller Web Setup - Experimental WebGL Version</title>
+
+		<link type="text/css" rel="stylesheet" href="css/ui-darkness/jquery-ui-1.10.3.custom.css">
+		<link type="text/css" rel="stylesheet" href="css/webgl.css">
+		
+		<script src="js/sylvester.src.js" type="text/javascript"></script>
+		<script src="js/glUtils.js" type="text/javascript"></script><!-- I don't like code of unknown provenance. -->
+
+		<script type="text/javascript" src="js/jquery-2.0.2.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.js"></script>
+
+		<!-- https://github.com/carhartl/jquery-cookie/blob/master/MIT-LICENSE.txt -->
+		<script type="text/javascript" src="js/jquery.cookie.js"></script>
+
+		<script type="text/javascript" src="js/jquery.event.drag-2.2.js"></script>
+
+		<script type="text/javascript" src="js/knc_util.js"></script>
+		<script type="text/javascript" src="js/knc_api.js"></script>
+		<script type="text/javascript" src="js/knc_zone.js"></script>
+		<script type="text/javascript" src="js/knc_webgl.js"></script>
+
+		<script id="shader-vs01" type="x-shader/x-vertex">
+			attribute highp vec3 aVertexNormal;
+			attribute highp vec3 aVertexPosition;
+			attribute lowp vec4 aVertexColor;
+			attribute highp vec2 aTexCoord;
+
+			uniform highp mat4 uNormalMatrix; // Normal transformation matrix
+			uniform highp mat4 uMVMatrix; // Model view matrix
+			uniform highp mat4 uPMatrix; // Projection matrix
+
+			varying lowp vec4 vColor; // interpolated color
+			varying highp vec2 vTexCoord;
+			varying highp vec3 vLighting;
+
+			void main(void) {
+				gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+				vTexCoord = aTexCoord;
+				vColor = aVertexColor;
+
+				const highp vec3 ambientColor = vec3(0.325, 0.325, 0.325);
+				const highp vec3 dirColor = vec3(0.4, 0.4, 0.4);
+				const highp vec3 dirVector = vec3(0.05, 0.25, 5.45);
+
+				highp vec4 txNormal = uNormalMatrix * vec4(aVertexNormal, 1.0);
+
+				highp float dirValue = max(dot(txNormal.xyz, dirVector), 0.0);
+				vLighting = ambientColor + dirColor * dirValue;
+			}
+		</script>
+		<script id="shader-fs01" type="x-shader/x-fragment">
+			varying lowp vec4 vColor;
+			varying highp vec2 vTexCoord;
+			varying highp vec3 vLighting;
+
+			uniform sampler2D uSampler;
+
+			void main(void) {
+				gl_FragColor = texture2D(uSampler, vec2(vTexCoord.s, vTexCoord.t)) *
+					vColor *
+					vec4(vLighting, 1.0);
+			}
+		</script>
+
+	</head>
+	<body>
+		<div id="offline-dialog">
+			The depth camera server is offline.<br>Make sure the camera is connected.
+			<p class="dialog_link"><a href="/settings.html">Device Settings</a></p>
+		</div>
+		<div id="addzone-dialog">
+			<p>Enter a name for the new zone.  Commas will be removed, spaces
+			replaced with underscores.  Names must be unique.</p>
+			<form id="addzone-form">
+				<input type="text" name="name" id="addzone_name" class="ui-widget-content ui-corner-all"></input>
+			</form>
+		</div>
+		<div id="zoneupload-dialog">
+			<p>Select a previously-downloaded zone file.  Existing
+			zones will be removed before the new zones are added.</p>
+			<form id="zoneupload-form" method="POST" action="uploadzones" charset="utf-8" enctype="multipart/form-data">
+				<input type="file" name="zone_file" id="zone_file"></input>
+				<input id="zoneupload-submit" type="submit" name="submit" value="Upload Zones"></input>
+			</form>
+		</div>
+		<div class="title">Depth Camera Controller Setup</div>
+		<div class="subtitle">##HOSTNAME##.local</div>
+		<div class="subtitle">
+			Camera server is <span class="online">online</span><span class="fps"></span><span class="offline">offline</span>
+		</div>
+		<div id="zonelisttabs">
+			<ul>
+				<li><a href="#zonelist">Zones</a></li>
+				<li style="float: right"><a class="undecorated"><span class="occupied_count">0</span> occupied</a></li>
+			</ul>
+			<div id="zonelist">
+				##ZONELIST##
+				<!-- TODO: Make this a tooltip -->
+				<div id="zonelist_help">
+					<p>Click a zone's name above to show/hide its details.
+					Expanded zones are shown in front of non-expanded
+					zones.</p>
+					<p>Click and drag in an empty area in one of the views
+					to the right to create a new zone.</p>
+				</div>
+			</div>
+		</div>
+		<div id="zonetabs">
+			<ul>
+				<li><a href="#zonetabs-1">Perspective</a></li>
+				<li><a href="#zonetabs-2">Overhead</a></li>
+				<li><a href="#zonetabs-3">Side</a></li>
+				<li><a href="#zonetabs-4">Front</a></li>
+
+				<!-- This next bit is very hackish, abusing jQuery behavior. -->
+				<li style="float: right;"><a id="showhide" style="cursor: pointer">Hide Zones</a></li>
+			</ul>
+			<div id="zonetabs-1" class="vis vis_perspective" data-view="perspective"><canvas id="persp_canvas">No canvas support.</canvas><div class="zonewrap">##ZONEDIVS##</div></div>
+			<div id="zonetabs-2" class="vis vis_overhead" data-view="overhead"><div class="zonewrap">##OVHDIVS##</div></div>
+			<div id="zonetabs-3" class="vis vis_side" data-view="side"><div class="zonewrap">##SIDEDIVS##</div></div>
+			<div id="zonetabs-4" class="vis vis_front" data-view="front"><div class="zonewrap">##FRONTDIVS##</div></div>
+		</div>
+		<img class="vis_perspective_loader imgloader">
+		<img class="vis_overhead_loader imgloader">
+		<img class="vis_side_loader imgloader">
+		<img class="vis_front_loader imgloader">
+		<div class="update_control">
+			<!-- Ugly -->
+			<a class="stopzone" href="javascript:">Stop Zone Updates</a>
+			&nbsp;|
+			<a class="startzone" href="javascript:">Resume Zone Updates</a>
+			&nbsp;|
+			<a class="stopimage" href="javascript:">Stop Image Updates</a>
+			&nbsp;|
+			<a class="startimage" href="javascript:">Resume Image Updates</a>
+			<br>
+			<a class="uploadzones" href="/zoneupload.html">Upload Zones</a>
+			&nbsp;|
+			<a href="/zones.json?dl=1">Download Zones</a>
+			&nbsp;|
+			<a href="/clearzones">Remove All Zones</a> <em>(Warning: cannot be undone)</em>
+			<br>
+			<a href="/settings.html">Device Settings</a>
+		</div>
+		<div class="copyright">Build ##BUILDNO## &copy;2011 Nitrogen Logic</div>
+	</body>
+</html>
+
