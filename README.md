@@ -43,6 +43,7 @@ rvm install 2.7.2
 echo '2.7.2' > .ruby-version
 echo 'knc' > .ruby-gemset
 rvm use .
+bundle install
 ```
 
 ## Direct use
@@ -50,7 +51,6 @@ rvm use .
 You can run KNC directly:
 
 ```bash
-bundle install
 KNC_SAVEDIR=/var/tmp/ ./knc.rb
 ```
 
@@ -58,7 +58,8 @@ Then load http://localhost:8089/ in your browser.
 
 ## Building a .deb package that uses system ruby
 
-The .deb package won't enable itself in SystemD (yet).
+The .deb package won't enable itself in SystemD (yet), and might just not work
+at all.
 
 ```bash
 meta/make_pkg.sh
@@ -84,7 +85,7 @@ build process.
 PACKAGE=0 TESTS=0 meta/make_root.sh
 
 # From here in knc
-meta/cross_build.sh
+meta/cross_pkg.sh
 ```
 
 [0]: http://www.nitrogenlogic.com/products/depth_controller.html
