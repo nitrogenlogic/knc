@@ -26,8 +26,8 @@ I've added [a few notes about this project on my blog][4].
 
 &copy; 2011-2021 Mike Bourgeous, licensed under [GNU Affero GPLv3][1].
 
-Some Javascript dependencies under `wwwdata/` will have their own licenses.
-See each file for details.
+Some CSS and Javascript dependencies under `wwwdata/` will have their own
+licenses.  See each file for details.
 
 Use of knc code in new projects is not recommended due in part to its older
 style and obsolete dependencies.
